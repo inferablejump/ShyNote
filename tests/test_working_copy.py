@@ -84,15 +84,17 @@ class WorkingCopyTests(unittest.TestCase):
     def test_first_pull_fetches_selected_note_and_refuses_untracked_overwrite(self):
         for backend in ("s3", "notion"):
             with self.subTest(backend=backend), self.notebook(backend) as (root, notebook, copy):
-                remote = notebook.store.create("Remote", "body\n")
+                remote = notebook.store.create("Remote", "body\n", path="notes/new.md")
                 preview = self.one(copy, "pull", "notes/new.md", note_id=remote.id, dry_run=True)
                 self.assertEqual(preview["status"], "would_pull")
                 self.assertFalse((root / "notes").exists())
                 self.assertFalse(copy.directory.exists())
-                (root / "note.md").write_text("scratch\n")
-                rejected = self.one(copy, "pull", note_id=remote.id)
+                (root / "notes").mkdir()
+                (root / "notes/new.md").write_text("scratch\n")
+                rejected = self.one(copy, "pull", "notes/new.md", note_id=remote.id)
                 self.assertEqual(rejected["status"], "conflict")
-                self.assertEqual((root / "note.md").read_text(), "scratch\n")
+                self.assertEqual((root / "notes/new.md").read_text(), "scratch\n")
+                (root / "notes/new.md").unlink()
                 pulled = self.one(copy, "pull", "notes/new.md", note_id=remote.id)
                 self.assertEqual(pulled["status"], "pulled")
                 self.assertEqual((root / "notes/new.md").read_text(), remote.body)
@@ -143,7 +145,7 @@ class WorkingCopyTests(unittest.TestCase):
                     (root / name).write_text("base")
                     ids[name] = self.one(copy, "push", name)["id"]
                 (root / "scratch.md").write_text("untracked")
-                unseen = notebook.store.create("Unseen remote", "unseen")
+                unseen = notebook.store.create("Unseen remote", "unseen", path="note.md")
                 (root / "missing.md").unlink()
                 (root / "b.md").write_text("local conflict")
                 self.update_remote(notebook, ids["b.md"], "remote conflict")

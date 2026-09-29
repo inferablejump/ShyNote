@@ -86,7 +86,8 @@ def main():
             check("content search explicitly unsupported", "not supported" in cli(first, "search-content", run_id, expect=1))
             check("archive explicitly unsupported", "not supported" in cli(first, "archive", note_id, "--unconditional", expect=1))
             check("unsupported archive retains note", not cli(first, "read", note_id)["archived"])
-            check("fresh checkout pull", cli(second, "pull", "finding.md", "--id", note_id)["results"][0]["status"] == "pulled"
+            restored = cli(second, "pull", "--id", note_id)["results"][0]
+            check("fresh checkout restores saved path", restored["status"] == "pulled" and restored["file"] == "finding.md"
                   and (second / "finding.md").read_text(encoding="utf-8") == fetched["body"])
             submitted_body = local.read_text(encoding="utf-8").replace("Original finding", "Updated finding")
             local.write_text(submitted_body, encoding="utf-8")

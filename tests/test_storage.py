@@ -38,8 +38,8 @@ class ContractTests(unittest.TestCase):
                 self.assertEqual(notion.calls, [])
                 self.assertEqual(store.list_notes(), [])
                 body = "# Finding\n\nUnicode: café 日本語\n\n```python\nprint('hello')\n```\n"
-                first = store.create("A finding 日本語", body)
-                second = store.create("A finding 日本語", "Another note")
+                first = store.create("A finding 日本語", body, path="note.md")
+                second = store.create("A finding 日本語", "Another note", path="note.md")
                 self.assertNotEqual(first.id, second.id)
                 self.assertEqual(store.read(first.id).body, body)
                 self.assertEqual(store.read(first.id).title, "A finding 日本語")
@@ -81,8 +81,8 @@ class ContractTests(unittest.TestCase):
         s3, notion = FakeS3(), FakeNotion()
         a = open_notebook(FIXTURES / "s3-repo", s3_client=s3, notion_transport=notion)
         b = open_notebook(FIXTURES / "notion-repo", s3_client=s3, notion_transport=notion)
-        note_a = a.store.create("S3 only", "a")
-        note_b = b.store.create("Notion only", "b")
+        note_a = a.store.create("S3 only", "a", path="note.md")
+        note_b = b.store.create("Notion only", "b", path="note.md")
         self.assertEqual([n.title for n in a.store.list_notes()], ["S3 only"])
         self.assertEqual([n.title for n in b.store.list_notes()], ["Notion only"])
         with self.assertRaises(NotFound):
@@ -95,7 +95,7 @@ class ProviderTests(unittest.TestCase):
     def test_s3_stale_revision_and_race(self):
         client = FakeS3()
         store = open_notebook(FIXTURES / "s3-repo", s3_client=client).store
-        note = store.create("Race", "before")
+        note = store.create("Race", "before", path="note.md")
         store.update(note.id, "first winner", revision=note.revision)
         with self.assertRaises(Conflict):
             store.update(note.id, "stale overwrite", revision=note.revision)
@@ -109,7 +109,7 @@ class ProviderTests(unittest.TestCase):
         client = FakeS3()
         config = load_config(FIXTURES / "s3-repo")
         a, b = S3Store(config, client=client), S3Store(replace(config, notebook="other"), client=client)
-        note = a.create("Private", "a")
+        note = a.create("Private", "a", path="note.md")
         self.assertEqual(b.list_notes(), [])
         with self.assertRaises(NotFound):
             b.read(note.id)
@@ -124,7 +124,7 @@ class ProviderTests(unittest.TestCase):
                 "Bucket": "shynote-test-only", "Key": ANY, "Body": ANY,
                 "ContentType": "text/markdown; charset=utf-8", "Metadata": ANY, "IfNoneMatch": "*",
             })
-            self.assertEqual(store.create("Title", "Body").revision, '"revision"')
+            self.assertEqual(store.create("Title", "Body", path="note.md").revision, '"revision"')
             stub.assert_no_pending_responses()
 
     def test_s3_auth_error_is_not_missing_note(self):
@@ -159,7 +159,7 @@ class ProviderTests(unittest.TestCase):
         a = NotionStore(config, transport=transport)
         other = replace(config, storage=replace(config.storage, parent_page_id=str(uuid4())))
         b = NotionStore(other, transport=transport)
-        note = a.create("Private", "a")
+        note = a.create("Private", "a", path="note.md")
         with self.assertRaises(NotFound):
             b.update(note.id, "overwrite", unconditional=True)
         self.assertEqual(b.list_notes(), [])
@@ -168,7 +168,7 @@ class ProviderTests(unittest.TestCase):
     def test_notion_partial_markdown_is_not_returned(self):
         transport = FakeNotion()
         store = open_notebook(FIXTURES / "notion-repo", notion_transport=transport).store
-        note = store.create("Title", "Body")
+        note = store.create("Title", "Body", path="note.md")
         transport.truncated = True
         with self.assertRaises(ProviderError):
             store.read(note.id)
@@ -235,7 +235,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_notion_archive_is_unsupported_without_provider_calls(self):
         transport = FakeNotion()
         notebook = open_notebook(FIXTURES / "notion-repo", notion_transport=transport)
-        note = notebook.store.create("Retained", "Keep this content")
+        note = notebook.store.create("Retained", "Keep this content", path="note.md")
         transport.calls.clear()
         for guard in ({}, {"revision": note.revision}, {"unconditional": True}):
             with self.subTest(guard=guard):
@@ -280,12 +280,12 @@ class SearchTests(unittest.TestCase):
         client = FakeS3()
         notebook = open_notebook(FIXTURES / "s3-repo", s3_client=client)
         other = S3Store(replace(notebook.config, notebook="other"), client=client)
-        other.create("Cache outside notebook", "private")
-        first = notebook.store.create("Cache finding 日本語", "body")
-        notebook.store.create("Other finding", "Cache only in body")
-        archived = notebook.store.create("Cache archived", "body")
+        other.create("Cache outside notebook", "private", path="note.md")
+        first = notebook.store.create("Cache finding 日本語", "body", path="note.md")
+        notebook.store.create("Other finding", "Cache only in body", path="note.md")
+        archived = notebook.store.create("Cache archived", "body", path="note.md")
         notebook.store.archive(archived.id, revision=archived.revision)
-        second = notebook.store.create("Cache finding 日本語", "duplicate title")
+        second = notebook.store.create("Cache finding 日本語", "duplicate title", path="note.md")
         client.calls.clear()
         matches = notebook.search_title(" cAcHe ")
         self.assertEqual([n.id for n in matches], [first.id, second.id])
@@ -308,21 +308,23 @@ class SearchTests(unittest.TestCase):
         notebook = open_notebook(FIXTURES / "notion-repo", notion_transport=transport)
         other_config = replace(notebook.config, storage=replace(notebook.config.storage, parent_page_id=str(uuid4())))
         other = NotionStore(other_config, transport=transport)
-        other.create("Cache outside notebook", "private")  # First result page is filtered out.
-        first = notebook.store.create("Cache finding 日本語", "body")
-        notebook.store.create("Other finding", "Cache only in body")
-        archived = notebook.store.create("Cache archived", "body")
+        other.create("Cache outside notebook", "private", path="note.md")  # First result page is filtered out.
+        first = notebook.store.create("Cache finding 日本語", "body", path="note.md")
+        notebook.store.create("Other finding", "Cache only in body", path="note.md")
+        archived = notebook.store.create("Cache archived", "body", path="note.md")
         transport.pages[archived.id]["in_trash"] = True  # Trashed outside ShyNote.
-        second = notebook.store.create("Cache finding 日本語", "duplicate title")
+        second = notebook.store.create("Cache finding 日本語", "duplicate title", path="note.md")
         nested_config = replace(notebook.config, storage=replace(notebook.config.storage, parent_page_id=first.id))
-        NotionStore(nested_config, transport=transport).create("Cache nested page", "not a direct note")
+        NotionStore(nested_config, transport=transport).create("Cache nested page", "not a direct note", path="note.md")
         transport.calls.clear()
         matches = notebook.search_title(" Cache ")
         self.assertEqual([n.id for n in matches], [first.id, second.id])
         self.assertTrue(all(not n.archived for n in matches))
         self.assertGreater(len(transport.calls), 1)
-        self.assertTrue(all(method == "POST" and path == "search" for method, path, _ in transport.calls))
-        self.assertTrue(all(payload["query"] == "Cache" for _, _, payload in transport.calls))
+        self.assertTrue(all((method == "POST" and path == "search") or
+                            (method == "GET" and path.startswith("blocks/"))
+                            for method, path, _ in transport.calls))
+        self.assertTrue(all(payload["query"] == "Cache" for method, _, payload in transport.calls if method == "POST"))
         self.assertEqual(notebook.search_title("absent"), [])
 
     def test_notion_empty_query_is_not_a_workspace_scan(self):
@@ -346,11 +348,11 @@ class SearchTests(unittest.TestCase):
 
     def test_cli_title_search_serializes_matches_and_propagates_provider_errors(self):
         notebook = open_notebook(FIXTURES / "notion-repo", notion_transport=FakeNotion())
-        note = notebook.store.create("Finding", "body")
+        note = notebook.store.create("Finding", "body", path="note.md")
         with patch("shynote.cli.open_notebook", return_value=notebook):
             with redirect_stdout(StringIO()) as out:
                 self.assertEqual(main(["search-title", "Finding"]), 0)
-            self.assertEqual(json.loads(out.getvalue()), [{"id": note.id, "title": "Finding", "archived": False}])
+            self.assertEqual(json.loads(out.getvalue()), [{"id": note.id, "title": "Finding", "path": "note.md", "archived": False}])
             with patch.object(notebook.store.transport, "request", side_effect=ProviderError("Unauthorized")):
                 with redirect_stdout(StringIO()) as out, redirect_stderr(StringIO()) as err:
                     self.assertEqual(main(["search-title", "Finding"]), 1)

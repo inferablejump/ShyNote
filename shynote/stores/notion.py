@@ -5,6 +5,8 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from uuid import UUID
 
+from . import notion_metadata
+
 from ..config import NotebookConfig, NotionConfig
 from ..model import (Capabilities, Conflict, Note, NoteSummary, NotFound,
                      ProviderError, ShyNoteError, UnsupportedCapability,
@@ -82,13 +84,13 @@ class NotionStore:
                        for prop in page["properties"].values() if prop.get("type") == "title"
                        for text in prop["title"])
 
-    def create(self, title: str, body: str) -> Note:
+    def create(self, title: str, body: str, *, path: str) -> Note:
         validate_title(title)
         page = self.transport.request("POST", "pages", {
             "parent": {"type": "page_id", "page_id": self.settings.parent_page_id},
             "properties": {"title": {"type": "title", "title": [
                 {"type": "text", "text": {"content": title}}]}},
-            "markdown": body,
+            "markdown": notion_metadata.encode(body, path),
         })
         return self.read(page["id"])
 
@@ -102,8 +104,26 @@ class NotionStore:
                 continue
             if content.get("truncated") or content.get("unknown_block_ids"):
                 raise ProviderError("Notion returned incomplete Markdown; refusing a partial note.")
-            return Note(note_id, self._title(after), content["markdown"], after["last_edited_time"], self._archived(after))
+            try:
+                body, path = notion_metadata.decode(content["markdown"])
+            except ShyNoteError as exc:
+                raise ProviderError(f"Notion page {note_id}: {exc}") from exc
+            return Note(note_id, self._title(after), body, after["last_edited_time"], path, self._archived(after))
         raise Conflict("The note kept changing while it was being read.")
+
+    def _summary(self, note_id, title):
+        # Only fetch the first block, not the complete note body.
+        result = self.transport.request("GET", f"blocks/{note_id}/children?page_size=1")
+        blocks = result["results"]
+        if not blocks or blocks[0]["type"] != "code":
+            raise ProviderError(f"Missing ShyNote path metadata on Notion page {note_id}.")
+        text = "".join(item.get("plain_text", item.get("text", {}).get("content", ""))
+                       for item in blocks[0]["code"]["rich_text"])
+        try:
+            path = notion_metadata.decode_path(text)
+        except ShyNoteError as exc:
+            raise ProviderError(f"Notion page {note_id}: {exc}") from exc
+        return NoteSummary(note_id, title, path)
 
     def list_notes(self) -> list[NoteSummary]:
         notes = []
@@ -116,7 +136,7 @@ class NotionStore:
             page = self.transport.request("GET", f"blocks/{self.settings.parent_page_id}/children?{urlencode(query)}")
             for block in page["results"]:
                 if block["type"] == "child_page" and not self._archived(block):
-                    notes.append(NoteSummary(self._id(block["id"]), block["child_page"]["title"]))
+                    notes.append(self._summary(self._id(block["id"]), block["child_page"]["title"]))
             if not page.get("has_more"):
                 return notes
             cursor = page.get("next_cursor")
@@ -144,7 +164,7 @@ class NotionStore:
                     continue
                 note_id = self._id(page["id"])
                 if note_id not in seen_ids:
-                    notes.append(NoteSummary(note_id, self._title(page)))
+                    notes.append(self._summary(note_id, self._title(page)))
                     seen_ids.add(note_id)
             if not result.get("has_more"):
                 return notes
@@ -166,13 +186,17 @@ class NotionStore:
 
     def update(self, note_id, body, *, revision=None, unconditional=False):
         note_id = self._writable(note_id, revision, unconditional)
+        note = self.read(note_id)
         result = self.transport.request("PATCH", f"pages/{note_id}/markdown", {
-            "type": "replace_content", "replace_content": {"new_str": body},
+            "type": "replace_content", "replace_content": {"new_str": notion_metadata.encode(body, note.path)},
         })
         if (result.get("truncated") or result.get("unknown_block_ids")
                 or not isinstance(result.get("markdown"), str)):
             raise ProviderError("Notion did not acknowledge complete Markdown after the write; inspect the note before retrying.")
-        return result["markdown"]
+        acknowledged, path = notion_metadata.decode(result["markdown"])
+        if path != note.path:
+            raise Conflict("Notion did not preserve the note path; inspect the remote note before retrying.")
+        return acknowledged
 
     def archive(self, note_id, *, revision=None, unconditional=False):
         raise UnsupportedCapability("Archive is not supported by the notion backend.")

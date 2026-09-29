@@ -9,7 +9,7 @@ import re
 import stat
 import tempfile
 
-from .model import Conflict, ShyNoteError, UnsupportedCapability, validate_title
+from .model import Conflict, ShyNoteError, UnsupportedCapability, validate_path, validate_title
 
 _METADATA_PATHS = {".git", ".shynote", ".shynote-local"}
 
@@ -63,11 +63,8 @@ class WorkingCopy:
             self.identity.update(parent_page_id=settings.parent_page_id)
 
     def _path(self, name):
+        validate_path(name)
         relative = Path(name)
-        if relative.is_absolute() or ".." in relative.parts or not relative.parts:
-            raise ShyNoteError("Note files must be inside the notebook repository.")
-        if any(part in _METADATA_PATHS for part in relative.parts):
-            raise ShyNoteError("Repository and ShyNote metadata cannot be tracked as notes.")
         path = self.root
         for part in relative.parts:
             path = path / part
@@ -144,14 +141,19 @@ class WorkingCopy:
         if operation not in {"push", "pull"}:
             raise ShyNoteError("Transfer must be push or pull.")
         requested = [] if file is None else [file] if isinstance(file, (str, Path)) else list(file)
-        if bool(requested) == all_files:
-            raise ShyNoteError("Choose one or more FILE arguments, or --all.")
-        if (all_files or len(requested) != 1) and (title is not None or note_id is not None):
+        restore_path = operation == "pull" and note_id and not requested and not all_files
+        if bool(requested) == all_files and not restore_path:
+            raise ShyNoteError("Choose FILE arguments, --all, or pull --id NOTE_ID to use its saved path.")
+        if (all_files or len(requested) > 1) and (title is not None or note_id is not None):
             raise ShyNoteError("--title and --id apply to a single file only.")
         if (operation == "pull" and title is not None) or (operation == "push" and note_id is not None):
             raise ShyNoteError("Use --title for a first push, or --id for a first pull.")
         with self._locked(dry_run):
             state = self._load()
+            if restore_path:
+                remote = self.notebook.store.read(note_id)
+                validate_path(remote.path)
+                requested = [remote.path]
             if all_files:
                 names = set(state["files"])
                 if operation == "push":
@@ -205,8 +207,10 @@ class WorkingCopy:
             result.update(status="would_create" if dry_run else "created", title=title)
             if not dry_run:
                 self._unchanged_locally(path, local)
-                remote = store.create(title, local)
+                remote = store.create(title, local, path=name)
                 result["id"] = remote.id
+                if remote.path != name:
+                    raise Conflict("The created note has a different remote path; inspect it before retrying.")
                 self._record(state, name, local, remote)
             return
         if entry is None and not note_id:
@@ -217,6 +221,8 @@ class WorkingCopy:
             raise ShyNoteError("This file already tracks a different remote note.")
         remote = store.read(entry["id"] if entry else note_id)
         result["id"] = remote.id
+        if remote.path != name:
+            raise ShyNoteError(f"Remote note path is {remote.path!r}, but the requested local path is {name!r}. Use pull --id {remote.id} to restore its saved path.")
         if any(other != name and tracked["id"] == remote.id for other, tracked in state["files"].items()):
             raise ShyNoteError("This remote note is already tracked by another local file.")
         if show_diff:
@@ -266,7 +272,7 @@ class WorkingCopy:
                 guard = {"revision": remote.revision} if store.capabilities.conditional_writes else {"unconditional": True}
                 acknowledged_body = store.update(remote.id, local, **guard)
                 written = store.read(remote.id)
-                if written.body != acknowledged_body:
+                if written.body != acknowledged_body or written.path != name:
                     raise Conflict("The write completed, but remote content differs from the acknowledged write on readback. Tracking was not advanced; inspect the remote note before retrying.")
                 self._record(state, name, local, written)
         else:

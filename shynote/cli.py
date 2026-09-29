@@ -16,7 +16,7 @@ def main(argv=None) -> int:
     from .initialize import add_arguments, initialize
     add_arguments(commands.add_parser("init", help="Configure a notebook, prompting for missing settings in a terminal"))
     commands.add_parser("info", help="Inspect configuration and capabilities without network access")
-    commands.add_parser("list", help="List active note titles without downloading note bodies")
+    commands.add_parser("list", help="List active note titles and saved relative paths")
     read = commands.add_parser("read")
     read.add_argument("id")
     for name in ("push", "pull"):
@@ -30,7 +30,7 @@ def main(argv=None) -> int:
             transfer.add_argument("--title", help="Title for a new note (default: file stem)")
             transfer.add_argument("--unconditional", action="store_true", help="Allow Notion writes without atomic conflict protection")
         else:
-            transfer.add_argument("--id", dest="note_id", help="Remote note ID for the first pull into an untracked file")
+            transfer.add_argument("--id", dest="note_id", help="Remote note ID; omit FILE to restore its saved relative path")
     archive = commands.add_parser("archive")
     archive.add_argument("id")
     guard = archive.add_mutually_exclusive_group(required=True)
@@ -41,9 +41,10 @@ def main(argv=None) -> int:
         search.add_argument("query")
     args = parser.parse_args(argv)
     if args.command in {"push", "pull"}:
-        if bool(args.files) == args.all_files:
-            parser.error("Choose one or more FILE arguments, or --all.")
-        if (args.all_files or len(args.files) != 1) and (
+        restore_path = args.command == "pull" and args.note_id and not args.files and not args.all_files
+        if bool(args.files) == args.all_files and not restore_path:
+            parser.error("Choose FILE arguments, --all, or pull --id NOTE_ID to use its saved path.")
+        if (args.all_files or len(args.files) > 1) and (
                 getattr(args, "title", None) is not None or getattr(args, "note_id", None) is not None):
             parser.error("--title and --id apply to a single file only.")
     try:

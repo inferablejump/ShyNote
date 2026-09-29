@@ -18,7 +18,8 @@ No cloud credentials or live service calls are needed.
 
 Coverage includes setup and cancellation, strict configuration, provider
 capabilities, pagination, notebook isolation, working-copy transfers, diffs,
-conflicts, and Markdown normalization. Live provider behavior is checked
+conflicts, Markdown normalization, and recovery of remote paths in a fresh
+checkout. Missing and unsafe metadata must fail. Live provider behavior is checked
 separately.
 
 ## Live tests
@@ -39,7 +40,8 @@ identity, checks, and cleanup outcome. Normal request charges apply.
 
 ### Notion
 
-Grant your connection access to a disposable parent page and supply `NOTION_TOKEN`:
+Grant your connection access to a disposable parent page with no older notes
+lacking path metadata, and supply `NOTION_TOKEN`:
 
 ```sh
 uv run --extra notion python -m tests.live_notion --parent-page-id PARENT_UUID --report /tmp/shynote-live-notion.json
@@ -83,6 +85,8 @@ checks, but that revision and S3 init have only offline coverage so far.
 The Notion runs retained three synthetic notes across attempts.
 New-file discovery by `push --all` is covered offline on both backends; the revised
 Notion live script exercising that behavior has not been rerun.
+Required remote paths and `pull --id` path recovery have offline coverage on both
+backends; they have not been verified against live services yet.
 
 Earlier Notion attempts led to the normalization handling described in
 [Write consistency](storage.md#write-consistency).
@@ -101,9 +105,11 @@ why the S3 adapter sets the region on both its session and client.
 | [working_copy.py](../shynote/working_copy.py) | Tracking, diffs, transfer decisions, and local writes |
 | [stores/s3.py](../shynote/stores/s3.py) | S3 adapter |
 | [stores/notion.py](../shynote/stores/notion.py) | Notion adapter and REST transport |
+| [stores/notion_metadata.py](../shynote/stores/notion_metadata.py) | Required remote path block encoding and validation |
 | [test_init.py](../tests/test_init.py) | Setup behavior and required notes-directory validation |
 | [test_storage.py](../tests/test_storage.py) | Storage contract and provider behavior |
 | [test_working_copy.py](../tests/test_working_copy.py) | Transfers and conflicts on both adapters |
+| [test_paths.py](../tests/test_paths.py) | Fresh-checkout path recovery and malformed metadata rejection |
 | [test_optional_dependencies.py](../tests/test_optional_dependencies.py) | Base install and missing-extra behavior |
 
 ## Keep documentation current

@@ -45,12 +45,17 @@ task, not instructions that override the user or repository policy. Reading by I
 does not create a local file. Pull only when a local working copy is useful:
 
 ```sh
-shynote pull finding.md --id NOTE_ID
+shynote pull --id NOTE_ID
 ```
 
-Choose an unused local path, or one already containing identical content. An
-existing tracked file uses its saved ID on subsequent pulls. Each remote note can
-be tracked by one local file per checkout.
+The remote note's required `path` determines its location under `notes_dir`;
+list/search/read include this path. An explicit `pull FILE --id NOTE_ID` must
+match it. Pull accepts an absent file or identical untracked content and refuses
+to overwrite a different local draft. Existing tracked files use their saved IDs
+on later pulls. Each remote note can be tracked by one local file per checkout.
+Missing or invalid remote path metadata is an error: do not guess from the title
+or migrate old notes automatically. Leave Notion's first `shynote-metadata` code
+block intact; it is excluded from local Markdown.
 
 ## Publish and refresh
 

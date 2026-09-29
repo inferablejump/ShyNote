@@ -10,7 +10,8 @@ handles local files, tracking, and conflict decisions for both backends.
 `Store.create()` and `Store.update()` are internal operations used by push; the
 CLI exposes neither as a separate command.
 
-`Note` contains an opaque ID, title, Markdown body, revision, and archive state.
+`Note` contains an opaque ID, title, required relative path, Markdown body,
+revision, and archive state.
 `NoteSummary` omits the body and revision. Callers do not interpret provider IDs
 or revision tokens.
 
@@ -38,11 +39,27 @@ Notion page to trash does not satisfy that contract.
 
 S3 stores each note at `<prefix>/<notebook>/notes/<uuid>.md`. JSON inside
 YAML-compatible frontmatter keeps metadata and body in one object write. Object
-metadata also holds the title and archive flag for listing without body downloads.
+metadata also holds the base64-encoded title and relative path, plus the archive
+flag, for listing without body downloads. Updates and archives preserve the path.
 
 Notion stores notes as direct child pages of the configured parent. Reads and
 mutations check page membership. Non-page child blocks are ignored. The parent
 page is the namespace; the local notebook name does not isolate pages.
+
+Each Notion page starts with a plain-text code block containing
+`shynote-metadata` on its first line and a JSON object such as
+`{"version": 1, "path": "design/auth.md"}` on its second line. This block is
+visible in Notion and must remain first and intact. The adapter strips it from
+returned Markdown and preserves it on updates. Paths are independent of titles;
+Notion pages remain flat, while a fresh checkout can recover the directory layout.
+Child pages only support a title property, so the path is stored in this content
+block rather than a custom page property.
+
+Paths use `/` separators and are relative to `notes_dir`, with a maximum of 1024
+UTF-8 bytes. Absolute paths, traversal, empty components, control characters,
+backslashes, colons, and Git/ShyNote metadata directories are rejected. Missing
+or invalid metadata fails explicitly on read, list, search, and update. Old notes
+without paths are unsupported; there is no fallback or automatic migration.
 
 See [Configuration](configuration.md) for the marker format and namespace settings.
 
@@ -63,6 +80,7 @@ request cost grows with notebook size.
 
 Notion listing follows child-block pagination. Title search calls `POST /v1/search`
 and filters the results to active direct children of the configured parent.
+Both listing and search fetch the first block of each matching page for its path.
 Matching and indexing follow the provider. Repeated or missing continuation
 cursors and explicitly incomplete results are errors.
 
@@ -112,4 +130,6 @@ For coverage and live evidence, see [Development](development.md).
 - [S3 conditional writes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html)
 - [Notion Markdown API](https://developers.notion.com/guides/data-apis/working-with-markdown-content)
 - [Notion Markdown write responses](https://developers.notion.com/reference/update-page-markdown)
+- [Notion code block format](https://developers.notion.com/guides/data-apis/enhanced-markdown)
+- [Notion page properties](https://developers.notion.com/reference/post-page)
 - [Notion REST search](https://developers.notion.com/reference/post-search)

@@ -65,8 +65,10 @@ and `.shynote-local/` out of Git.
 Use the existing notes directory with `init --notes-dir PATH`; init preserves its
 files. Preview with `push --all --dry-run`, then publish with `push --all` and
 inspect every result. The first push creates remote notes and records mappings;
-files already stored remotely should be linked with `pull FILE --id NOTE_ID`
-instead of uploaded as duplicates.
+files already stored remotely should be linked with `pull --id NOTE_ID` at their
+saved relative paths instead of uploaded as duplicates. This requires identical
+local content or an absent file. Notes without remote path metadata are errors;
+there is no backward compatibility or automatic migration.
 
 Git tracking is separate. Init adds ignore rules but does not untrack files.
 When removing notes from Git is part of the user's request, verify the upload,

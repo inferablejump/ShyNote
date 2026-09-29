@@ -102,6 +102,13 @@ class FakeNotion:
             return deepcopy(page)
         if parts[0] == "blocks":
             assert method == "GET" and parts[2] == "children"
+            if parts[1] in self.bodies:
+                body = self.bodies[parts[1]]
+                if body.startswith("```") and "\n```" in body:
+                    content = body.split("\n", 1)[1].split("\n```", 1)[0]
+                    return {"results": [{"type": "code", "code": {
+                        "rich_text": [{"plain_text": content}]}}], "has_more": False}
+                return {"results": [{"type": "paragraph"}], "has_more": False}
             pages = [p for p in self.pages.values() if p["parent"]["page_id"] == parts[1]]
             start = int(parse_qs(route.query).get("start_cursor", ["0"])[0])
             batch = pages[start:start + 1]

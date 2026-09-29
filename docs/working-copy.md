@@ -12,7 +12,7 @@ Paths are relative to your configured notes directory, usually `.agent/notes`:
 
 ```sh
 shynote push finding.md --title "Cache finding"
-shynote pull existing.md --id NOTE_ID
+shynote pull --id NOTE_ID
 ```
 
 After editing or when checking for remote changes:
@@ -27,9 +27,21 @@ For Notion updates, add `--unconditional` to push, including update previews.
 It permits a write without an atomic revision guard; content conflicts still
 stop the transfer. A first push creates a note without that flag.
 
-An initial pull can use an absent file or an untracked file whose content already
-matches the remote note. Each remote note can be tracked by one local file per
-checkout. Subsequent pulls use the saved ID.
+Every remote note stores its path relative to `notes_dir`, separately from its
+title. For example, `design/auth.md` and `research/auth.md` remain distinct even
+if both titles are `auth`. `list`, `search-title`, and `read` include that path.
+
+`pull --id NOTE_ID` restores the saved path, including its parent directories,
+in a fresh checkout. You can also give `pull FILE --id NOTE_ID`, but FILE must
+match the saved path. An initial pull accepts an absent file or an untracked file
+whose content already matches the note. It refuses to overwrite a different draft.
+Each remote note can be tracked by one local file per checkout. Subsequent pulls
+use the saved ID. Moving a tracked file is not a remote rename operation.
+
+Missing, malformed, or unsafe remote paths are errors. There is no title-based
+fallback or automatic migration of notes created before path metadata existed.
+Notion stores this metadata in the first code block on each page; leave it intact.
+The block is excluded from local Markdown and diffs.
 
 ## Select files
 

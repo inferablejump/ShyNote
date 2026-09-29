@@ -246,7 +246,7 @@ class InitTests(unittest.TestCase):
                 self.assertEqual(result["status"], "created")
                 self.assertEqual(notebook.store.read(result["id"]).body, "inside notes")
                 self.assertEqual(set(json.loads((root / ".shynote-local/state.json").read_text())["files"]), {"hello.md"})
-                new = notebook.store.create("Another", "fetched body")
+                new = notebook.store.create("Another", "fetched body", path="sub/fetched.md")
                 pulled = copy.transfer("pull", "sub/fetched.md", note_id=new.id)["results"][0]
                 self.assertEqual(pulled["status"], "pulled")
                 self.assertEqual((root / ".agent/notes/sub/fetched.md").read_text(), "fetched body")

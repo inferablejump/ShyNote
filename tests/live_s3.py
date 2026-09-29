@@ -87,7 +87,8 @@ def main():
             second.mkdir()
             (second / ".shynote").write_text(marker)
             check("fresh checkout reads persisted note", cli(second, "read", note["id"])["body"] == body)
-            check("pull into fresh checkout", cli(second, "pull", "finding.md", "--id", note["id"])["results"][0]["status"] == "pulled")
+            restored = cli(second, "pull", "--id", note["id"])["results"][0]
+            check("pull saved path into fresh checkout", restored["status"] == "pulled" and restored["file"] == "finding.md")
             (second / ".shynote").write_text(marker.replace(notebook_id, str(uuid4())))
             check("different notebook is isolated", cli(second, "list") == [])
             (second / ".shynote").write_text(marker)

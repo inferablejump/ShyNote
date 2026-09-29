@@ -7,7 +7,7 @@ from uuid import UUID, uuid4
 from ..config import NotebookConfig, S3Config
 from ..model import (Capabilities, Conflict, Note, NoteSummary, NotFound,
                      ProviderError, ShyNoteError, UnsupportedCapability,
-                     validate_title, validate_write)
+                     validate_path, validate_title, validate_write)
 
 
 class S3Store:
@@ -77,19 +77,23 @@ class S3Store:
 
     def _put(self, note: Note, **condition) -> str:
         header = {"version": 1, "id": note.id, "title": note.title, "archived": note.archived}
+        metadata = {"shynote-title": base64.b64encode(note.title.encode()).decode(),
+                    "shynote-archived": str(note.archived).lower()}
+        validate_path(note.path)
+        header["path"] = note.path
+        metadata["shynote-path"] = base64.b64encode(note.path.encode()).decode()
         payload = f"---\n{json.dumps(header, ensure_ascii=False)}\n---\n{note.body}"
         result = self._call(
             "put_object", Key=self._key(note.id), Body=payload.encode("utf-8"),
             ContentType="text/markdown; charset=utf-8",
-            Metadata={"shynote-title": base64.b64encode(note.title.encode()).decode(),
-                      "shynote-archived": str(note.archived).lower()},
+            Metadata=metadata,
             **condition,
         )
         return result["ETag"]
 
-    def create(self, title: str, body: str) -> Note:
+    def create(self, title: str, body: str, *, path: str) -> Note:
         validate_title(title)
-        note = Note(str(uuid4()), title, body, "")
+        note = Note(str(uuid4()), title, body, "", path=path)
         return replace(note, revision=self._put(note, IfNoneMatch="*"))
 
     def read(self, note_id: str) -> Note:
@@ -105,9 +109,11 @@ class S3Store:
                 raise ValueError("Invalid note identity")
             if not isinstance(header["title"], str) or type(header["archived"]) is not bool:
                 raise ValueError("Invalid note metadata")
-            return Note(header["id"], header["title"], body[4:], result["ETag"], header["archived"])
-        except (KeyError, TypeError, ValueError) as exc:
-            raise ProviderError("Stored object is not a valid ShyNote document.") from exc
+            path = header["path"]
+            validate_path(path)
+            return Note(header["id"], header["title"], body[4:], result["ETag"], path, header["archived"])
+        except (KeyError, TypeError, ValueError, ShyNoteError) as exc:
+            raise ProviderError(f"Object {note_id} is not a valid ShyNote document; a valid saved relative path is required.") from exc
 
     def list_notes(self) -> list[NoteSummary]:
         notes = []
@@ -131,9 +137,11 @@ class S3Store:
                     continue
                 try:
                     title = base64.b64decode(metadata["shynote-title"], validate=True).decode()
-                except (KeyError, ValueError, UnicodeError) as exc:
-                    raise ProviderError("Invalid ShyNote object metadata.") from exc
-                notes.append(NoteSummary(note_id, title))
+                    path = base64.b64decode(metadata["shynote-path"], validate=True).decode()
+                    validate_path(path)
+                except (KeyError, ValueError, UnicodeError, ShyNoteError) as exc:
+                    raise ProviderError(f"Invalid ShyNote object metadata for {note_id}; a saved relative path is required.") from exc
+                notes.append(NoteSummary(note_id, title, path=path))
         return notes
 
     def _change(self, note_id, *, body=None, archive=False, revision=None, unconditional=False):

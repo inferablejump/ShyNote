@@ -16,7 +16,7 @@ def main():
     for notebook in notebooks:
         store = notebook.store
         title = f"ShyNote smoke {uuid4()}"
-        note = store.create(title, "# Smoke test\n\nA disposable ShyNote test note.")
+        note = store.create(title, "# Smoke test\n\nA disposable ShyNote test note.", path="note.md")
         print(f"{notebook.config.backend}: created {note.id}", flush=True)
         try:
             fetched = store.read(note.id)

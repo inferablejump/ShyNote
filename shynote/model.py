@@ -38,6 +38,7 @@ class Capabilities:
 class NoteSummary:
     id: str
     title: str
+    path: str
     archived: bool = False
 
 
@@ -47,6 +48,7 @@ class Note:
     title: str
     body: str
     revision: str
+    path: str
     archived: bool = False
 
 
@@ -54,7 +56,7 @@ class Store(Protocol):
     capabilities: Capabilities
 
     def check_access(self) -> None: ...
-    def create(self, title: str, body: str) -> Note: ...
+    def create(self, title: str, body: str, *, path: str) -> Note: ...
     def read(self, note_id: str) -> Note: ...
     def list_notes(self) -> list[NoteSummary]: ...
     def search_title(self, query: str) -> list[NoteSummary]: ...
@@ -75,6 +77,16 @@ class Store(Protocol):
 def validate_title(title: str) -> None:
     if not title.strip() or len(title) > 200:
         raise ShyNoteError("Note titles must contain 1–200 characters.")
+
+
+def validate_path(path: str) -> None:
+    """Validate portable, canonical paths before trusting remote metadata."""
+    if (not isinstance(path, str) or not path or len(path.encode("utf-8")) > 1024
+            or any(ord(char) < 32 or ord(char) == 127 for char in path)
+            or "\\" in path or ":" in path
+            or any(part in {"", ".", "..", ".git", ".shynote", ".shynote-local"}
+                   for part in path.split("/"))):
+        raise ShyNoteError("Invalid note path: expected a relative path inside notes_dir, without traversal or metadata directories.")
 
 
 def validate_write(capabilities: Capabilities, revision: str | None,

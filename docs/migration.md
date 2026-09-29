@@ -27,9 +27,11 @@ If the repository already has `.shynote`, inspect `shynote info`; init does not
 change an existing notebook or migrate its tracking to a different directory.
 
 If a local note already exists remotely but has no local mapping, use
-`shynote pull FILE --id NOTE_ID` to link it. The local content must match, or you
-must reconcile it first. ShyNote does not match notes by title; pushing an unmapped
-file creates a new remote note.
+`shynote pull --id NOTE_ID` to link it at its saved relative path. The local content
+must match, or you must reconcile it first. ShyNote does not match notes by title;
+pushing an unmapped file creates a new remote note. Existing remote notes without
+path metadata are unsupported and error explicitly; this guide does not migrate
+old remote storage formats.
 
 Preview and publish:
 
@@ -95,9 +97,10 @@ Install the CLI and agent skill, supply credentials, and use the committed
 
 ```sh
 shynote list
-shynote pull finding.md --id NOTE_ID
+shynote pull --id NOTE_ID
 ```
 
-Pull builds that checkout's own tracking state. Do not copy `.shynote-local/`
+Pull restores the saved directory layout under `notes_dir` and builds that
+checkout's own tracking state. Do not copy `.shynote-local/`
 between checkouts. `pull --all` refreshes mapped local files; it does not initially
 download the remote notebook.

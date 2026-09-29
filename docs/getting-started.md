@@ -148,9 +148,11 @@ and choose a note to fetch:
 
 ```sh
 shynote list
-shynote pull finding.md --id NOTE_ID
+shynote pull --id NOTE_ID
 ```
 
-Pull creates the local file and its parent directories. There is no initial
+Pull uses the remote note's saved relative path and creates the local file and
+its parent directories under `notes_dir`. Missing path metadata is an error;
+older notes without it are unsupported. There is no initial
 notebook download. Continue with [Working with notes](working-copy.md) for bulk
 transfers, diffs, and conflict recovery.

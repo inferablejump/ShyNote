@@ -47,7 +47,8 @@ storage settings, added ignore rules, warnings, `read_access: "verified"`, and
 | --- | --- |
 | `push FILE [FILE ...]` | Create remote notes for new files; update tracked notes |
 | `push --all` | Push local Markdown files, including new files, plus existing tracked files |
-| `pull FILE --id NOTE_ID` | Fetch a note and begin tracking it locally |
+| `pull --id NOTE_ID` | Restore a note at its saved relative path and begin tracking it |
+| `pull FILE --id NOTE_ID` | Same, requiring FILE to match the saved remote path |
 | `pull FILE [FILE ...]` | Refresh selected tracked files |
 | `pull --all` | Refresh locally present tracked files |
 
@@ -67,7 +68,7 @@ both go through push; there is no separate `create` command.
 | `--dry-run` | Push, pull | Preview changes and diffs without writes |
 | `--diff` | Push, pull | Include diffs in transfer results |
 | `--title TITLE` | First push of one file | Set the title; default is the file stem |
-| `--id NOTE_ID` | First pull of one file | Select the remote note |
+| `--id NOTE_ID` | Pull of one note | Select the remote note; FILE can be omitted |
 | `--unconditional` | Push | Allow Notion updates without an atomic revision guard |
 
 File arguments cannot be combined with `--all`. `--title` and `--id` apply only
@@ -90,7 +91,9 @@ See [Working with notes](working-copy.md) for examples and status meanings.
 | `search-title QUERY` | Matching active note summaries |
 | `search-content QUERY` | Unsupported on both backends; exits with code 1 |
 
-Summaries contain `id`, `title`, and `archived`. Read results also contain `body`
+Summaries contain `id`, `title`, `path`, and `archived`. The required `path` is
+relative to `notes_dir`; missing or invalid remote path metadata is an error.
+Read results also contain `body`
 and `revision`. `info` includes `root`, `notes_dir`, `notebook`, `backend`, and
 capability flags.
 
