@@ -1,6 +1,6 @@
 # ShyNote
 
-![ShyNote](assets/ShyNoteIcon.png)
+<img src="assets/ShyNoteIcon.png" width="50%">
 
 ---
 This section is wrote by human and should be read by human (and agents?)
