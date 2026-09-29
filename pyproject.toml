@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shynote"
+version = "0.1.0"
+description = "A persistent, repo-scoped notebook for coding agents"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+s3 = ["boto3[crt]>=1.41,<2"]
+notion = []
+
+[project.scripts]
+shynote = "shynote.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["shynote*"]

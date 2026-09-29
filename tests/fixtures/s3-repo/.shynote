@@ -1,0 +1,9 @@
+version = 1
+notebook = "fixture-s3"
+backend = "s3"
+notes_dir = "."
+
+[storage]
+bucket = "shynote-test-only"
+prefix = "fixtures"
+region = "us-east-1"

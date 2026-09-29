@@ -1,0 +1,4 @@
+interface:
+  display_name: "ShyNote"
+  short_description: "Find and maintain persistent repository notes"
+  default_prompt: "Use $shynote to find relevant repository notes and maintain findings for this task."

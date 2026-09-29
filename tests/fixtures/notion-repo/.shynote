@@ -1,0 +1,8 @@
+version = 1
+notebook = "fixture-notion"
+backend = "notion"
+notes_dir = "."
+
+[storage]
+parent_page_id = "00000000-0000-4000-8000-000000000001"
+token_env = "SHYNOTE_TEST_NOTION_TOKEN"
