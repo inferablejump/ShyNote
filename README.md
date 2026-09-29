@@ -9,8 +9,7 @@ I cannot be the only person upset about the crazy number of notes the coding age
 They can certainly be useful, but they also contain a lot of internal information, usually more than what I would comfortably share with the rest of the world.
 Also, they're just not part of source code, nor are the documentations, so why are they version controlled and tracked by git?
 Still, we should track them somehow. Agents might want to reference them from time to time.
-Hence, I (vibe) coded this tool.
-Thanks Codex.
+Hence, I (vibe) coded this tool with Codex.
 
 ---
 
@@ -24,12 +23,17 @@ the notebook; scratch notes and local tracking are ignored by default.
 
 ## Get started
 
-Requires Python 3.11+. From this source checkout, install the backend you use:
+Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/getting-started/installation/).
+From this source checkout, install a command you can use in any repository:
 
 ```sh
-pip install -e '.[s3]'
-# For Notion: pip install -e '.[notion]'
+uv tool install '.[s3,notion]'
+# For an editable installation: uv tool install --editable '.[s3,notion]'
 ```
+
+No venv activation is needed. Choose `'.[s3]'` or `'.[notion]'` for one backend.
+See [installation instructions](docs/getting-started.md#install-the-cli-for-use-across-repositories)
+for cloning, PATH setup, and updates.
 
 Have an existing S3 bucket and AWS credentials, or a Notion parent page and token.
 Then run this in the repository where you want notes:
@@ -66,10 +70,13 @@ implemented.
 ## Agent skill
 
 The [ShyNote skill](skills/shynote/SKILL.md) teaches coding agents how to find
-relevant notes, publish findings, and handle transfer results. Copy the complete
-`skills/shynote/` folder into your agent's skills directory. It includes a setup
-reference and optional Codex discovery metadata; the CLI must be installed
-separately.
+relevant notes, publish findings, and handle transfer results. Follow the
+[Codex and Claude Code installation commands](docs/agent-skill.md) to install it
+for your user or a specific repository. Install the CLI separately using the
+steps above.
+
+Already keeping notes in Git? [Migrate existing notes](docs/migration.md) explains
+how to publish them and stop Git tracking while retaining local copies.
 
 ## Development
 

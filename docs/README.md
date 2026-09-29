@@ -8,7 +8,8 @@ backend, and publish your first note.
 | [Working with notes](working-copy.md) | Push, pull, file selection, diffs, and conflicts |
 | [CLI reference](cli.md) | Commands, flags, JSON output, and exit codes |
 | [Configuration](configuration.md) | `.shynote`, credentials, paths, and Git files |
-| [Agent skill](../skills/shynote/SKILL.md) | Portable instructions for coding agents using the notebook |
+| [Install the agent skill](agent-skill.md) | Codex and Claude Code commands for user or repository installation |
+| [Migrate existing notes](migration.md) | Publish notes and remove Git tracking while keeping local files |
 | [Storage internals](storage.md) | Adapter contracts, search, and write guarantees |
 | [Design decisions](decisions.md) | Why the main behaviors work this way |
 | [Development](development.md) | Tests, verification records, and source map |

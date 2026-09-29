@@ -7,9 +7,11 @@ init with a new generated S3 notebook ID would select a different namespace.
 ## Prerequisites
 
 Use Python 3.11+ and an installed ShyNote CLI. From a ShyNote source checkout,
-install the selected backend with `pip install -e '.[s3]'` or
-`pip install -e '.[notion]'`. These commands require the package source directory;
-do not run them in an arbitrary target repository.
+`uv tool install '.[s3,notion]'` makes the command available across repositories
+without activating a venv. Select `'.[s3]'` or `'.[notion]'` for one backend; add
+`--editable` to use live source changes. These commands require the package source
+directory, not the target notes repository. If needed, use `uv tool update-shell`
+and open a new terminal. Installing this skill does not install the CLI.
 
 Obtain the user's chosen storage location and use credentials from the environment:
 
@@ -57,3 +59,19 @@ reports `read_access: "verified"` and `write_access: "not_tested"`. A failed che
 leaves local setup unapplied. Run `shynote info` to read the resulting paths and
 capabilities. Share `.shynote` and ignore rules as appropriate; keep credentials
 and `.shynote-local/` out of Git.
+
+## Bring existing notes into ShyNote
+
+Use the existing notes directory with `init --notes-dir PATH`; init preserves its
+files. Preview with `push --all --dry-run`, then publish with `push --all` and
+inspect every result. The first push creates remote notes and records mappings;
+files already stored remotely should be linked with `pull FILE --id NOTE_ID`
+instead of uploaded as duplicates.
+
+Git tracking is separate. Init adds ignore rules but does not untrack files.
+When removing notes from Git is part of the user's request, verify the upload,
+then use `git rm -r --cached -- PATH` from the repository root. This stages their
+removal from Git while retaining the current local copies. Review the staged diff
+and include `.shynote` and `.gitignore` in the migration commit. Preserve unrelated
+staged work. This does not erase previous commits, and other checkouts applying
+the removal may lose their clean tracked copies; retain backups or remote notes.

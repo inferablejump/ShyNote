@@ -2,20 +2,63 @@
 
 [Documentation](README.md)
 
-## Install
+## Install the CLI for use across repositories
 
-ShyNote requires Python 3.11+. From the ShyNote source checkout, install the extra
-for your backend into your Python environment:
+ShyNote requires Python 3.11+ and [uv](https://docs.astral.sh/uv/getting-started/installation/).
+Clone the source and install it as a user-wide tool:
 
 ```sh
-pip install -e '.[s3]'
-# Or:
-pip install -e '.[notion]'
+git clone https://github.com/inferablejump/ShyNote.git
+cd ShyNote
+uv tool install '.[s3,notion]'
+shynote --help
 ```
 
-To use both backends, install `'.[s3,notion]'`. With uv, use
-`uv sync --extra s3` or `uv sync --extra notion` and activate the environment with
-`source .venv/bin/activate` before changing to your project directory.
+Use `'.[s3]'` or `'.[notion]'` instead if you only need one backend. uv manages the
+tool's environment and puts `shynote` on your PATH, so no venv activation is
+needed in the repositories where you keep notes. See [uv's tool guide](https://docs.astral.sh/uv/guides/tools/).
+
+If the command is not found, run:
+
+```sh
+uv tool update-shell
+```
+
+Then open a new terminal. If you previously activated the project's venv, run
+`deactivate` to stop its executable from taking precedence. Check which install
+you are using with `command -v shynote`.
+
+### Work from an editable checkout
+
+If you develop ShyNote or want source changes to take effect immediately, use an
+editable tool install. From the ShyNote source directory:
+
+```sh
+uv tool install --editable '.[s3,notion]'
+```
+
+The same command works from anywhere with an absolute path:
+
+```sh
+uv tool install --editable '/absolute/path/to/ShyNote[s3,notion]'
+```
+
+Keep that checkout in place. After pulling changes, a normal installation needs
+reinstalling from the source directory:
+
+```sh
+git pull --ff-only
+uv tool install --reinstall '.[s3,notion]'
+```
+
+An editable install picks up Python source edits automatically. If package
+metadata or dependencies change, rerun its install command with `--reinstall`
+and `--editable`. These commands manage the CLI; skill copies are updated
+separately.
+
+To give a coding agent the workflow instructions, follow
+[Install the agent skill](agent-skill.md). To bring existing notes into ShyNote,
+follow [Migrate existing notes](migration.md).
 
 ## Prepare storage and credentials
 

@@ -99,6 +99,8 @@ Commit `.shynote` and the ignore rules. By default, init adds:
 
 A custom notes directory gets its own rule. `--no-ignore-notes` omits that rule;
 it does not remove existing rules. Git-tracked files remain tracked.
+To remove their Git tracking while keeping local copies, follow
+[Migrate existing notes](migration.md).
 
 `.shynote-local/state.json` holds file-to-note mappings and synchronization state.
 It stays beside `.shynote`, regardless of the notes directory. Do not commit or
