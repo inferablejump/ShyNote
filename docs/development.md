@@ -22,6 +22,8 @@ conflicts, Markdown normalization, and recovery of remote paths in a fresh
 checkout, plus Notion directory creation, reuse, traversal, and hierarchy mismatch
 errors. Missing and unsafe metadata must fail. Live provider behavior is checked
 separately.
+Rate-limit tests mock HTTP 429 responses and time: they verify retry timing and
+limits, refusal to repeat ambiguous writes, and recovery from failed readback.
 Bulk-push tests check that sibling discovery is shared within a batch and that
 the cache is discarded afterward.
 
@@ -117,6 +119,7 @@ why the S3 adapter sets the region on both its session and client.
 | [test_working_copy.py](../tests/test_working_copy.py) | Transfers and conflicts on both adapters |
 | [test_paths.py](../tests/test_paths.py) | Fresh-checkout path recovery and malformed metadata rejection |
 | [test_notion_hierarchy.py](../tests/test_notion_hierarchy.py) | Nested directory creation, traversal, isolation, and strict layout checks |
+| [test_notion_rate_limits.py](../tests/test_notion_rate_limits.py) | Bounded 429 retries and preservation of created IDs after readback failure |
 | [test_optional_dependencies.py](../tests/test_optional_dependencies.py) | Base install and missing-extra behavior |
 
 ## Keep documentation current

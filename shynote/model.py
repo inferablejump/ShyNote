@@ -26,6 +26,14 @@ class ProviderError(ShyNoteError):
     pass
 
 
+class CreatedNoteError(ProviderError):
+    """Creation succeeded, but the note could not be verified for local tracking."""
+
+    def __init__(self, note_id: str, message: str):
+        super().__init__(message)
+        self.note_id = note_id
+
+
 @dataclass(frozen=True)
 class Capabilities:
     conditional_writes: bool

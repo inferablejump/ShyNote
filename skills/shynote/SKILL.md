@@ -139,6 +139,10 @@ the intended edits and push. There is no automatic merge or force-overwrite flag
 If a write completed but readback or local tracking failed, inspect the remote
 note before retrying. Do not blindly rerun the whole batch or repeat a create:
 it may duplicate a note. Report the failed file and prior successes when blocked.
+Notion retries HTTP 429 within bounded limits and reports waits on stderr; let
+those retries finish. An error containing a created `id` means creation succeeded
+but tracking did not: read the note and recover with `pull --id` after reconciling
+local content. For an older error without an ID, inspect list results by path.
 
 Keep `.shynote-local/` private to the checkout. Never delete tracking to clear a
 conflict or change `notes_dir` to redirect existing state. If a crashed transfer

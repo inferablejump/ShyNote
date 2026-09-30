@@ -121,6 +121,17 @@ Further concurrent edits may produce another conflict. There is no automatic
 merge or force-overwrite option. Deleting tracking state is not conflict
 resolution: a later push could create a duplicate note.
 
+Notion rate limits pause and retry the failed request automatically, within
+bounded attempt and wait limits. Wait notices appear on stderr. If retries are
+exhausted, the batch stops and earlier successful files remain tracked.
+
+If a note was created but verification failed, its error result includes the
+created `id`. Inspect it with `shynote read NOTE_ID`, then recover tracking with
+`shynote pull --id NOTE_ID` before pushing again. Pull requires identical local
+content or an absent file; preserve and reconcile any different draft first.
+For errors from older versions that omitted the created ID, inspect `shynote list`
+for the failed file's path. Do not assume a failed push means no page was created.
+
 ## Transfer statuses
 
 | Status | Meaning |

@@ -115,6 +115,21 @@ cursors and explicitly incomplete results are errors.
 Both searches return summaries. Neither downloads note bodies or builds a local
 index. `search_content` remains a separate unsupported operation.
 
+## Notion rate limits
+
+HTTP 429 responses are retried within the individual request, including reads
+after creation. The transport respects `Retry-After`, adds a small random delay,
+and uses exponential backoff when the header is missing or shorter. Each request
+has at most five attempts and 120 seconds of cumulative retry waits. If the next
+wait exceeds that budget, the request fails instead of retrying too early.
+Wait notices go to stderr, leaving JSON output on stdout unchanged.
+
+An explicit `public_api_request_blocked` response fails immediately. Other HTTP
+errors and connection failures are not automatically retried; an ambiguous
+write may already have succeeded. In particular, retrying a throttled readback
+does not repeat the preceding page creation. If creation returned an ID but
+verification still fails, the error preserves that ID for manual recovery.
+
 ## Write consistency
 
 S3 creates use `If-None-Match: *`. Guarded updates and archives inspect the supplied
@@ -161,4 +176,5 @@ For coverage and live evidence, see [Development](development.md).
 - [Notion code block format](https://developers.notion.com/guides/data-apis/enhanced-markdown)
 - [Notion page properties](https://developers.notion.com/reference/post-page)
 - [Notion child-page traversal](https://developers.notion.com/reference/get-block-children)
+- [Notion request limits](https://developers.notion.com/reference/request-limits)
 - [Notion REST search](https://developers.notion.com/reference/post-search)

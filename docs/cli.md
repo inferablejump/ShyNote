@@ -80,6 +80,10 @@ The result contains `operation`, `dry_run`, and a `results` array. Each attempte
 file has `file` and `status`, plus its known remote `id`, an `error` on failure, or
 an available `diff` when requested. Diffs are JSON strings with escaped newlines.
 
+An error may include a newly created `id` when remote creation succeeded but
+verification failed; that note is not yet tracked locally. Inspect and recover
+it with read/pull before retrying creation. Notion rate-limit wait notices go to
+stderr while the request retries; exhausted retries produce an ordinary error.
 See [Working with notes](working-copy.md) for examples and status meanings.
 
 ## Browse and read

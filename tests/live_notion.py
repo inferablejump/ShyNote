@@ -35,11 +35,11 @@ def main():
         print(f"PASS: {name}", flush=True)
 
     def cli(repo, *arguments, expect=0):
-        # Space CLI invocations to keep this small live test below sustained limits.
+        # Space CLI invocations; a large notebook can still hit provider limits.
         time.sleep(1)
         result = subprocess.run(
             [sys.executable, "-m", "shynote", *arguments], cwd=repo,
-            env={**os.environ, "PYTHONPATH": source}, capture_output=True, text=True, timeout=90)
+            env={**os.environ, "PYTHONPATH": source}, capture_output=True, text=True, timeout=300)
         output = json.loads(result.stdout) if result.stdout else result.stderr.strip()
         if result.returncode != expect:
             raise RuntimeError(f"CLI {arguments[0]} exited {result.returncode}: {output}")

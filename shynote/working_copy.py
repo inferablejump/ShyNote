@@ -9,7 +9,7 @@ import re
 import stat
 import tempfile
 
-from .model import Conflict, ShyNoteError, UnsupportedCapability, validate_path, validate_title
+from .model import Conflict, CreatedNoteError, ShyNoteError, UnsupportedCapability, validate_path, validate_title
 
 _METADATA_PATHS = {".git", ".shynote", ".shynote-local"}
 
@@ -178,6 +178,8 @@ class WorkingCopy:
                                            show_diff or dry_run, title, note_id, unconditional)
                 except (ShyNoteError, OSError, UnicodeError) as exc:
                     result.update(status="conflict" if isinstance(exc, Conflict) else "error", error=str(exc))
+                    if isinstance(exc, CreatedNoteError):
+                        result["id"] = exc.note_id
                 results.append(result)
                 if result["status"] in {"error", "conflict"}:
                     break

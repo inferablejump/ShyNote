@@ -1,6 +1,9 @@
 import json
 import os
 import posixpath
+import random
+import sys
+import time
 from contextlib import contextmanager
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
@@ -10,13 +13,16 @@ from uuid import UUID
 from . import notion_metadata
 
 from ..config import NotebookConfig, NotionConfig
-from ..model import (Capabilities, Conflict, Note, NoteSummary, NotFound,
+from ..model import (Capabilities, Conflict, CreatedNoteError, Note, NoteSummary, NotFound,
                      ProviderError, ShyNoteError, UnsupportedCapability,
                      validate_path, validate_title, validate_write)
 
 
 class NotionTransport:
     """Direct REST transport. No hosted MCP or model calls."""
+
+    max_attempts = 5
+    max_retry_wait = 120
 
     def __init__(self, token_env: str):
         self.token_env = token_env
@@ -31,21 +37,50 @@ class NotionTransport:
             headers={"Authorization": f"Bearer {token}", "Notion-Version": "2026-03-11",
                      "Content-Type": "application/json"},
         )
-        try:
-            with urlopen(request, timeout=30) as response:
-                return json.load(response)
-        except HTTPError as exc:
-            status = exc.code
-            retry_after = exc.headers.get("Retry-After")
-            exc.close()
-            if status == 404:
-                raise NotFound("Note not found or not accessible.") from exc
-            if status == 409:
-                raise Conflict("Notion reported a conflict.") from exc
-            suffix = f" Retry after {retry_after} seconds." if status == 429 and retry_after else ""
-            raise ProviderError(f"Notion request failed (HTTP {status}).{suffix}") from exc
-        except URLError as exc:
-            raise ProviderError("Cannot reach Notion. A failed write may have succeeded; inspect before retrying.") from exc
+        waited = 0
+        for attempt in range(self.max_attempts):
+            try:
+                with urlopen(request, timeout=30) as response:
+                    return json.load(response)
+            except HTTPError as exc:
+                status = exc.code
+                retry_after = exc.headers.get("Retry-After")
+                blocked = False
+                try:
+                    if status == 429:
+                        error = json.load(exc)
+                        blocked = error.get("additional_data", {}).get("rate_limit_reason") == "public_api_request_blocked"
+                except (ValueError, TypeError, AttributeError):
+                    pass  # Error responses need not have a JSON body.
+                finally:
+                    exc.close()
+                if status == 404:
+                    raise NotFound("Note not found or not accessible.") from exc
+                if status == 409:
+                    raise Conflict("Notion reported a conflict.") from exc
+                if blocked:
+                    raise ProviderError("Notion API access is restricted (HTTP 429, public_api_request_blocked); automatic retries will not help.") from exc
+                if status == 429 and attempt + 1 < self.max_attempts:
+                    backoff = 2 ** attempt
+                    try:
+                        delay = max(int(retry_after), backoff)
+                    except (ValueError, TypeError):
+                        delay = backoff
+                    delay += random.uniform(0, 0.25)
+                    if waited + delay <= self.max_retry_wait:
+                        print(f"shynote: Notion rate limit; waiting {delay:.1f}s before retry {attempt + 1}/{self.max_attempts - 1} ({method} {path}).",
+                              file=sys.stderr, flush=True)
+                        time.sleep(delay)
+                        waited += delay
+                        continue
+                suffix = f" Retry after {retry_after} seconds." if status == 429 and retry_after else ""
+                if status == 429:
+                    suffix += " Automatic retry limit reached."
+                elif method not in {"GET", "HEAD"} and status >= 500:
+                    suffix += " A write may have succeeded; inspect before retrying."
+                raise ProviderError(f"Notion request failed (HTTP {status}).{suffix}") from exc
+            except URLError as exc:
+                raise ProviderError("Cannot reach Notion. A failed write may have succeeded; inspect before retrying.") from exc
 
 
 class NotionStore:
@@ -142,7 +177,10 @@ class NotionStore:
                for _, _, metadata in self._entries(parent, posixpath.dirname(path), discovery=True)):
             raise ProviderError(f"Cannot create note {path!r}: its remote path is occupied by a directory.")
         page = self._create_page(parent, title, notion_metadata.encode(body, path))
-        note = self.read(page["id"])
+        try:
+            note = self.read(page["id"])
+        except (ShyNoteError, OSError, UnicodeError) as exc:
+            raise CreatedNoteError(page["id"], f"Created Notion note {page['id']}, but verification failed: {exc} Inspect it with read, then use pull --id {page['id']} to recover tracking; do not repeat the create.") from exc
         if self._discovery_cache is not None and parent in self._discovery_cache:
             self._discovery_cache[parent].append((note.id, note.title, {"kind": "note", "path": note.path}))
         return note
