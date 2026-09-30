@@ -27,7 +27,7 @@ the Notion adapter uses the standard library.
 | Create, read, list, update body | Supported | Supported |
 | Atomic conditional writes | ETag guards | Unsupported |
 | Archive | Retained object, hidden from active results | Unsupported |
-| Title search | LIST and HEAD metadata | REST search filtered to the parent page |
+| Title search | LIST and HEAD metadata | REST search with notebook ancestry checks |
 | Content search | Unsupported | Unsupported |
 
 Capability flags are independent. Unsupported operations raise
@@ -42,16 +42,20 @@ YAML-compatible frontmatter keeps metadata and body in one object write. Object
 metadata also holds the base64-encoded title and relative path, plus the archive
 flag, for listing without body downloads. Updates and archives preserve the path.
 
-Notion stores notes as direct child pages of the configured parent. Reads and
-mutations check page membership. Non-page child blocks are ignored. The parent
-page is the namespace; the local notebook name does not isolate pages.
+Notion mirrors directories as nested pages under the configured parent. Pushing
+`design/auth.md` creates or reuses the `design` directory page, then creates the
+note inside it. Directory titles match the exact local directory names; note
+titles remain independent of filenames. The parent page is the namespace; the
+local notebook name does not isolate pages.
 
 Each Notion page starts with a plain-text code block containing
 `shynote-metadata` on its first line and a JSON object such as
-`{"version": 1, "path": "design/auth.md"}` on its second line. This block is
+`{"version": 1, "kind": "note", "path": "design/auth.md"}` on its second line. This block is
 visible in Notion and must remain first and intact. The adapter strips it from
-returned Markdown and preserves it on updates. Paths are independent of titles;
-Notion pages remain flat, while a fresh checkout can recover the directory layout.
+returned Markdown and preserves it on updates. Directory pages use
+`{"version": 1, "kind": "directory", "path": "design"}`. The configured notebook
+root itself needs no metadata. Directory pages are excluded from note results
+and cannot be read or updated as notes.
 Child pages only support a title property, so the path is stored in this content
 block rather than a custom page property.
 
@@ -60,6 +64,22 @@ UTF-8 bytes. Absolute paths, traversal, empty components, control characters,
 backslashes, colons, and Git/ShyNote metadata directories are rejected. Missing
 or invalid metadata fails explicitly on read, list, search, and update. Old notes
 without paths are unsupported; there is no fallback or automatic migration.
+Notion also requires an explicit `kind`; pages from older formats are not inferred
+to be notes or directories.
+
+Reads and updates follow page ancestry to the notebook root and verify the saved
+path against directory metadata and titles. A manual move or directory rename
+that disagrees with this layout is an error. Restore the original location/name
+before retrying; ShyNote does not automatically move pages or rename local files.
+Duplicate directory paths and paths occupied by both a note and a directory are
+errors during directory discovery. Notes cannot act as directory pages.
+
+Directory names must fit the 1–200 character title limit. Push creates missing
+directories one at a time and only rewrites note content. Empty local directories
+are not published. If a later write fails, earlier directory pages remain and can
+be reused. This is not an atomic operation: concurrent creation can produce
+duplicate directories, which a later discovery reports as ambiguous. There is
+no automatic folder cleanup. A dry run creates no directories.
 
 See [Configuration](configuration.md) for the marker format and namespace settings.
 
@@ -78,9 +98,17 @@ S3 listing uses paginated LIST requests and HEAD for each note object. Title
 search filters those titles using case-insensitive substring matching, so its
 request cost grows with notebook size.
 
-Notion listing follows child-block pagination. Title search calls `POST /v1/search`
-and filters the results to active direct children of the configured parent.
-Both listing and search fetch the first block of each matching page for its path.
+Notion listing follows child-block pagination through explicitly marked directory
+pages, ignoring non-page blocks in those containers. Title search calls
+`POST /v1/search` and checks result ancestry to include nested notes in this
+notebook. Directory matches are excluded. Both listing and search read first
+blocks for metadata; ancestry checks also retrieve parent pages. Creation reads
+siblings to discover directories and reject ambiguous paths. Request counts grow
+with notebook size and depth. During a push/pull batch, creation reuses sibling
+discovery and adds newly created pages to that snapshot. Reused directories are
+checked for changes before writing beneath them. The cache is discarded when
+the transfer ends, including on error; reads and listings still perform fresh
+checks. There is no persistent directory cache.
 Matching and indexing follow the provider. Repeated or missing continuation
 cursors and explicitly incomplete results are errors.
 
@@ -132,4 +160,5 @@ For coverage and live evidence, see [Development](development.md).
 - [Notion Markdown write responses](https://developers.notion.com/reference/update-page-markdown)
 - [Notion code block format](https://developers.notion.com/guides/data-apis/enhanced-markdown)
 - [Notion page properties](https://developers.notion.com/reference/post-page)
+- [Notion child-page traversal](https://developers.notion.com/reference/get-block-children)
 - [Notion REST search](https://developers.notion.com/reference/post-search)

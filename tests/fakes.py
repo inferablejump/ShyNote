@@ -102,21 +102,22 @@ class FakeNotion:
             return deepcopy(page)
         if parts[0] == "blocks":
             assert method == "GET" and parts[2] == "children"
+            blocks = []
             if parts[1] in self.bodies:
                 body = self.bodies[parts[1]]
                 if body.startswith("```") and "\n```" in body:
                     content = body.split("\n", 1)[1].split("\n```", 1)[0]
-                    return {"results": [{"type": "code", "code": {
-                        "rich_text": [{"plain_text": content}]}}], "has_more": False}
-                return {"results": [{"type": "paragraph"}], "has_more": False}
-            pages = [p for p in self.pages.values() if p["parent"]["page_id"] == parts[1]]
+                    blocks.append({"type": "code", "code": {"rich_text": [{"plain_text": content}]}})
+                elif body:
+                    blocks.append({"type": "paragraph"})
+            pages = [p for p in self.pages.values() if p["parent"].get("page_id") == parts[1]]
+            blocks.extend({"id": p["id"], "type": "child_page", "in_trash": p["in_trash"],
+                           "child_page": {"title": p["properties"]["title"]["title"][0]["text"]["content"]}}
+                          for p in pages)
             start = int(parse_qs(route.query).get("start_cursor", ["0"])[0])
-            batch = pages[start:start + 1]
-            results = [{"id": p["id"], "type": "child_page", "in_trash": p["in_trash"],
-                        "child_page": {"title": p["properties"]["title"]["title"][0]["text"]["content"]}}
-                       for p in batch]
-            more = start + 1 < len(pages)
-            return {"results": results, "has_more": more, "next_cursor": str(start + 1) if more else None}
+            more = start + 1 < len(blocks)
+            return {"results": deepcopy(blocks[start:start + 1]), "has_more": more,
+                    "next_cursor": str(start + 1) if more else None}
         note_id = parts[1]
         if note_id not in self.pages:
             raise NotFound("Fixture page not found.")

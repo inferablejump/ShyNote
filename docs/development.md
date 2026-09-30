@@ -19,8 +19,11 @@ No cloud credentials or live service calls are needed.
 Coverage includes setup and cancellation, strict configuration, provider
 capabilities, pagination, notebook isolation, working-copy transfers, diffs,
 conflicts, Markdown normalization, and recovery of remote paths in a fresh
-checkout. Missing and unsafe metadata must fail. Live provider behavior is checked
+checkout, plus Notion directory creation, reuse, traversal, and hierarchy mismatch
+errors. Missing and unsafe metadata must fail. Live provider behavior is checked
 separately.
+Bulk-push tests check that sibling discovery is shared within a batch and that
+the cache is discarded afterward.
 
 ## Live tests
 
@@ -41,7 +44,7 @@ identity, checks, and cleanup outcome. Normal request charges apply.
 ### Notion
 
 Grant your connection access to a disposable parent page with no older notes
-lacking path metadata, and supply `NOTION_TOKEN`:
+lacking path/kind metadata, and supply `NOTION_TOKEN`:
 
 ```sh
 uv run --extra notion python -m tests.live_notion --parent-page-id PARENT_UUID --report /tmp/shynote-live-notion.json
@@ -49,8 +52,9 @@ uv run --extra notion python -m tests.live_notion --parent-page-id PARENT_UUID -
 
 Creates synthetic child notes and exercises search, Markdown, push/pull, diffs,
 and conflicts across two temporary local checkouts, including discovery of new
-files by `push --all`. It leaves the remote notes for manual cleanup and records
-their IDs. Local test directories are removed.
+files by `push --all`. It also checks nested page parents, directory reuse, and
+path recovery. It leaves the remote notes and directories for manual cleanup and
+records their IDs. Local test directories are removed.
 `--token-env NAME` selects another token variable.
 
 ### Shared store contract
@@ -87,6 +91,8 @@ New-file discovery by `push --all` is covered offline on both backends; the revi
 Notion live script exercising that behavior has not been rerun.
 Required remote paths and `pull --id` path recovery have offline coverage on both
 backends; they have not been verified against live services yet.
+Nested Notion directory pages are also covered offline; the updated live harness
+has not been rerun for the hierarchy implementation.
 
 Earlier Notion attempts led to the normalization handling described in
 [Write consistency](storage.md#write-consistency).
@@ -110,6 +116,7 @@ why the S3 adapter sets the region on both its session and client.
 | [test_storage.py](../tests/test_storage.py) | Storage contract and provider behavior |
 | [test_working_copy.py](../tests/test_working_copy.py) | Transfers and conflicts on both adapters |
 | [test_paths.py](../tests/test_paths.py) | Fresh-checkout path recovery and malformed metadata rejection |
+| [test_notion_hierarchy.py](../tests/test_notion_hierarchy.py) | Nested directory creation, traversal, isolation, and strict layout checks |
 | [test_optional_dependencies.py](../tests/test_optional_dependencies.py) | Base install and missing-extra behavior |
 
 ## Keep documentation current

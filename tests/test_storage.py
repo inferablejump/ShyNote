@@ -314,15 +314,15 @@ class SearchTests(unittest.TestCase):
         archived = notebook.store.create("Cache archived", "body", path="note.md")
         transport.pages[archived.id]["in_trash"] = True  # Trashed outside ShyNote.
         second = notebook.store.create("Cache finding 日本語", "duplicate title", path="note.md")
-        nested_config = replace(notebook.config, storage=replace(notebook.config.storage, parent_page_id=first.id))
-        NotionStore(nested_config, transport=transport).create("Cache nested page", "not a direct note", path="note.md")
+        nested = notebook.store.create("Cache nested page", "nested note", path="nested/note.md")
         transport.calls.clear()
         matches = notebook.search_title(" Cache ")
-        self.assertEqual([n.id for n in matches], [first.id, second.id])
+        self.assertEqual([n.id for n in matches], [first.id, second.id, nested.id])
         self.assertTrue(all(not n.archived for n in matches))
         self.assertGreater(len(transport.calls), 1)
         self.assertTrue(all((method == "POST" and path == "search") or
-                            (method == "GET" and path.startswith("blocks/"))
+                            (method == "GET" and (path.startswith("blocks/") or
+                                                  (path.startswith("pages/") and "/markdown" not in path)))
                             for method, path, _ in transport.calls))
         self.assertTrue(all(payload["query"] == "Cache" for method, _, payload in transport.calls if method == "POST"))
         self.assertEqual(notebook.search_title("absent"), [])

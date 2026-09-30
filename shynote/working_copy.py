@@ -1,5 +1,5 @@
 """Explicit, per-file transfer between a local working copy and one notebook."""
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from difflib import unified_diff
 import hashlib
 import json
@@ -148,7 +148,9 @@ class WorkingCopy:
             raise ShyNoteError("--title and --id apply to a single file only.")
         if (operation == "pull" and title is not None) or (operation == "push" and note_id is not None):
             raise ShyNoteError("Use --title for a first push, or --id for a first pull.")
-        with self._locked(dry_run):
+        # Backends may scope request caches to one transfer; S3 needs no batch hook.
+        batch = getattr(self.notebook.store, "transfer_batch", nullcontext)
+        with self._locked(dry_run), batch():
             state = self._load()
             if restore_path:
                 remote = self.notebook.store.read(note_id)

@@ -84,9 +84,11 @@ Replace the example UUID with your parent page ID. Init accepts a page URL and
 converts it to a UUID. `parent_page_id` is required; `token_env` defaults to
 `NOTION_TOKEN` and names the environment variable containing the token.
 
-The parent page defines the notebook: its direct child pages are notes. Changing
-`notebook` alone does not create a separate Notion notebook. ShyNote calls the
-Notion REST API directly.
+The parent page defines the notebook root. ShyNote creates directory pages below
+it to mirror relative file paths, with notes inside those directories. Use a
+dedicated parent: child pages must have ShyNote metadata identifying them as notes
+or directories. Changing `notebook` alone does not create a separate Notion
+notebook. ShyNote calls the Notion REST API directly.
 
 ## Git and local state
 

@@ -21,10 +21,11 @@ def main():
     args = parser.parse_args()
     parent = str(args.parent_page_id)
     run_id = uuid4().hex[:12]
+    note_path = f"hierarchy-{run_id}/design/finding.md"
     report = {"started_at": datetime.now(timezone.utc).isoformat(),
               "parent_page_id": parent, "run_id": run_id, "checks": [],
-              "created_notes": [], "passed": False,
-              "cleanup": "Notes are retained for manual cleanup; Notion archive is unsupported."}
+              "created_notes": [], "created_directories": [], "passed": False,
+              "cleanup": "Notes and directories are retained for manual cleanup; Notion archive is unsupported."}
     source = str(Path(__file__).resolve().parents[1])
 
     def check(name, condition):
@@ -60,17 +61,27 @@ def main():
                   info["capabilities"] == {"conditional_writes": False, "title_search": True,
                                            "content_search": False, "archive": False})
             initial_ids = {item["id"] for item in cli(first, "list")}
-            local = first / "finding.md"
+            local = first / note_path
+            local.parent.mkdir(parents=True)
             local.write_text("# Live finding\n\nOriginal finding: café 日本語.\n\n```python\nprint('hello')\n```\n", encoding="utf-8")
             title = f"ShyNote live {run_id} finding"
-            preview = cli(first, "push", "finding.md", "--title", title, "--dry-run")["results"][0]
+            preview = cli(first, "push", note_path, "--title", title, "--dry-run")["results"][0]
             check("new push dry run", preview["status"] == "would_create" and "Original finding" in preview["diff"]
                   and not (first / ".shynote-local").exists())
             check("new dry run creates no remote note", {item["id"] for item in cli(first, "list")} == initial_ids)
-            created = cli(first, "push", "finding.md", "--title", title)["results"][0]
+            created = cli(first, "push", note_path, "--title", title)["results"][0]
             note_id = created["id"]
             report["created_notes"].append({"id": note_id, "title": title})
             check("first push creates and tracks note", created["status"] == "created")
+            note_page = transport.request("GET", f"pages/{note_id}")
+            folder_id = note_page["parent"]["page_id"]
+            report["created_directories"].append(folder_id)
+            folder_page = transport.request("GET", f"pages/{folder_id}")
+            top_id = folder_page["parent"]["page_id"]
+            report["created_directories"].append(top_id)
+            top_page = transport.request("GET", f"pages/{top_id}")
+            check("note resides in nested directory pages", top_page["parent"]["page_id"] == parent
+                  and folder_id != top_id and folder_id != parent)
             fetched = cli(first, "read", note_id)
             check("Markdown title Unicode and code survive", fetched["title"] == title and
                   "café 日本語" in fetched["body"] and "print('hello')" in fetched["body"])
@@ -87,18 +98,18 @@ def main():
             check("archive explicitly unsupported", "not supported" in cli(first, "archive", note_id, "--unconditional", expect=1))
             check("unsupported archive retains note", not cli(first, "read", note_id)["archived"])
             restored = cli(second, "pull", "--id", note_id)["results"][0]
-            check("fresh checkout restores saved path", restored["status"] == "pulled" and restored["file"] == "finding.md"
-                  and (second / "finding.md").read_text(encoding="utf-8") == fetched["body"])
+            check("fresh checkout restores saved path", restored["status"] == "pulled" and restored["file"] == note_path
+                  and (second / note_path).read_text(encoding="utf-8") == fetched["body"])
             submitted_body = local.read_text(encoding="utf-8").replace("Original finding", "Updated finding")
             local.write_text(submitted_body, encoding="utf-8")
             state = (first / ".shynote-local/state.json").read_bytes()
-            refused = cli(first, "push", "finding.md", expect=1)["results"][0]
+            refused = cli(first, "push", note_path, expect=1)["results"][0]
             check("push requires unconditional opt-in", refused["status"] == "error" and "--unconditional" in refused["error"])
-            preview = cli(first, "push", "finding.md", "--unconditional", "--dry-run")["results"][0]
+            preview = cli(first, "push", note_path, "--unconditional", "--dry-run")["results"][0]
             check("push dry run shows diff", preview["status"] == "would_push" and "Updated finding" in preview["diff"])
             check("push dry run preserves remote and state", cli(first, "read", note_id)["body"] == fetched["body"]
                   and (first / ".shynote-local/state.json").read_bytes() == state)
-            pushed = cli(first, "push", "finding.md", "--unconditional", "--diff")["results"][0]
+            pushed = cli(first, "push", note_path, "--unconditional", "--diff")["results"][0]
             updated_body = cli(first, "read", note_id)["body"]
             report["updated_markdown"] = updated_body
             check("push persists ordinary Markdown update", pushed["status"] == "pushed" and
@@ -106,8 +117,8 @@ def main():
                   and "```python\nprint('hello')\n```" in updated_body)
             report["update_normalized_markdown"] = updated_body != submitted_body
             check("normalized push preserves local formatting", local.read_text(encoding="utf-8") == submitted_body)
-            check("normalized push remains synchronized", cli(first, "push", "finding.md", "--unconditional")["results"][0]["status"] == "unchanged")
-            second_file = second / "finding.md"
+            check("normalized push remains synchronized", cli(first, "push", note_path, "--unconditional")["results"][0]["status"] == "unchanged")
+            second_file = second / note_path
             second_state = (second / ".shynote-local/state.json").read_bytes()
             preview = cli(second, "pull", "--all", "--dry-run")["results"][0]
             check("pull dry run preserves local file and state", preview["status"] == "would_pull" and preview["diff"]
@@ -116,7 +127,7 @@ def main():
             second_file.write_text(fetched["body"].replace("Original finding", "Conflicting local finding"), encoding="utf-8")
             for operation in ("push", "pull"):
                 flags = ["--unconditional"] if operation == "push" else []
-                result = cli(second, operation, "finding.md", *flags, expect=1)["results"][0]
+                result = cli(second, operation, note_path, *flags, expect=1)["results"][0]
                 check(f"divergent {operation} rejected", result["status"] == "conflict")
             check("conflict preserves remote and local", cli(first, "read", note_id)["body"] == updated_body and
                   "Conflicting local finding" in second_file.read_text(encoding="utf-8"))
@@ -131,11 +142,21 @@ def main():
                 if result["status"] == "created":
                     report["created_notes"].append({"id": result["id"], "title": result["title"]})
             check("push all updates tracked and creates new files",
-                  [item["file"] for item in bulk] == ["finding.md", "scratch.md"] and
+                  [item["file"] for item in bulk] == [note_path, "scratch.md"] and
                   [item["status"] for item in bulk] == ["pushed", "created"])
             second_file.unlink()
             check("missing local file does not delete remote", cli(second, "push", "--all", "--unconditional")["results"][0]["status"] == "skipped_missing"
                   and not cli(first, "read", note_id)["archived"])
+            sibling_path = f"hierarchy-{run_id}/design/another.md"
+            (second / sibling_path).write_text("A sibling note to verify directory reuse.")
+            sibling = cli(second, "push", sibling_path)["results"][0]
+            report["created_notes"].append({"id": sibling["id"], "title": sibling["title"]})
+            sibling_page = transport.request("GET", f"pages/{sibling['id']}")
+            check("sibling note reuses existing directories", sibling_page["parent"]["page_id"] == folder_id)
+            listing = cli(first, "list")
+            check("list includes nested paths and excludes directory pages",
+                  any(item["id"] == sibling["id"] and item["path"] == sibling_path for item in listing)
+                  and not {folder_id, top_id}.intersection(item["id"] for item in listing))
             report["passed"] = True
     except Exception as exc:
         report["error"] = str(exc)

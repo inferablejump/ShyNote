@@ -79,6 +79,7 @@ use revision guards, including when this flag is supplied.
 The result contains `operation`, `dry_run`, and a `results` array. Each attempted
 file has `file` and `status`, plus its known remote `id`, an `error` on failure, or
 an available `diff` when requested. Diffs are JSON strings with escaped newlines.
+
 See [Working with notes](working-copy.md) for examples and status meanings.
 
 ## Browse and read

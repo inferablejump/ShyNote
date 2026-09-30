@@ -134,7 +134,7 @@ class RemotePathTests(unittest.TestCase):
                             item["Metadata"]["shynote-path"] = base64.b64encode(bad_path.encode()).decode()
                         item["Body"] = f"---\n{json.dumps(header)}\n{body}".encode()
                     else:
-                        metadata = json.dumps({"version": 1, "path": bad_path})
+                        metadata = json.dumps({"version": 1, "kind": "note", "path": bad_path})
                         store.transport.bodies[note.id] = ("body" if bad_path is None else
                             f"```text\nshynote-metadata\n{metadata}\n```\n\nbody")
                     for command in (("read", note.id), ("list",), ("search-title", "Title"),

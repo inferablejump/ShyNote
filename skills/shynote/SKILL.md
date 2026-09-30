@@ -55,7 +55,10 @@ to overwrite a different local draft. Existing tracked files use their saved IDs
 on later pulls. Each remote note can be tracked by one local file per checkout.
 Missing or invalid remote path metadata is an error: do not guess from the title
 or migrate old notes automatically. Leave Notion's first `shynote-metadata` code
-block intact; it is excluded from local Markdown.
+block intact; it is excluded from local Markdown. Notion mirrors directories as
+nested pages marked `kind: directory`; notes use `kind: note`. List/search include
+nested notes and omit directories. Do not treat a directory page as a note or
+rename/move pages to resolve an error: hierarchy and saved paths must agree.
 
 ## Publish and refresh
 
@@ -75,6 +78,10 @@ The first push creates a remote note and records its ID. Later pushes update the
 body. `--title` applies only to the first push of one file; otherwise the default
 title is the file stem. Use push for both creation and updates; every successful
 first push establishes local tracking.
+
+On Notion, a first push creates missing directory pages. A failed push may leave
+earlier directories in place; valid directories are reused on later pushes.
+Missing kind metadata and ambiguous directory paths are errors, with no fallback.
 
 For an authorized Notion update, add `--unconditional` to push and its update
 preview. Notion cannot guard writes atomically, so concurrent edits can be lost

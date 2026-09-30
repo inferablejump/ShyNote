@@ -43,6 +43,18 @@ fallback or automatic migration of notes created before path metadata existed.
 Notion stores this metadata in the first code block on each page; leave it intact.
 The block is excluded from local Markdown and diffs.
 
+Notion also mirrors your directories as nested pages. For example,
+`shynote push design/auth.md` creates or reuses the `design` page and places the
+note inside it. Its default title is still `auth`; `--title` can change that
+display title. List and search return notes from all ShyNote directory pages,
+with folders themselves omitted. S3's object layout is unchanged.
+
+Leave directory titles, parent relationships, and metadata intact. Manual moves
+or directory renames that disagree with saved paths cause errors; there is no
+automatic rename or move synchronization. Notion pages need an explicit note or
+directory kind, so older metadata is not accepted. A failed push can leave empty
+directory pages that later pushes reuse; it does not roll back created folders.
+
 ## Select files
 
 ```sh

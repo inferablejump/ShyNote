@@ -53,6 +53,8 @@ S3 accepts `--prefix` (default `shynote`) and `--notebook` (default generated UU
 The bucket, prefix, and notebook ID together identify the S3 notebook. On Notion,
 the parent page identifies the notebook; changing its local name does not isolate
 pages. Use a dedicated parent for each independent notebook.
+Notion directory pages are created during push, not init. Nested notes must stay
+under the configured root with valid note/directory metadata.
 
 The access check accepts empty storage and makes no remote writes. Success
 reports `read_access: "verified"` and `write_access: "not_tested"`. A failed check
