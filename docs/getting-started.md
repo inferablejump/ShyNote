@@ -144,15 +144,16 @@ the transfer.
 ## Use the notebook in another checkout
 
 Commit `.shynote` and `.gitignore`. In the other checkout, supply your credentials
-and choose a note to fetch:
+and restore the notebook:
 
 ```sh
-shynote list
-shynote pull --id NOTE_ID
+shynote pull --mirror --dry-run
+shynote pull --mirror
 ```
 
-Pull uses the remote note's saved relative path and creates the local file and
-its parent directories under `notes_dir`. Missing path metadata is an error;
-older notes without it are unsupported. There is no initial
-notebook download. Continue with [Working with notes](working-copy.md) for bulk
-transfers, diffs, and conflict recovery.
+Mirror restores all active notes at their saved paths and rebuilds local tracking.
+It overwrites local edits and removes local-only files in `notes_dir`; use it when
+the remote notebook should replace the local copy. To fetch just one note while
+preserving other local work, use `shynote list` and `shynote pull --id NOTE_ID`.
+Missing path metadata is an error; older notes without it are unsupported.
+Continue with [Working with notes](working-copy.md) for transfers, diffs, and recovery.

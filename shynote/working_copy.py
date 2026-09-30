@@ -137,10 +137,15 @@ class WorkingCopy:
                     yield path.relative_to(self.root).as_posix()
 
     def transfer(self, operation, file=None, *, all_files=False, dry_run=False,
-                 show_diff=False, title=None, note_id=None, unconditional=False):
+                 show_diff=False, title=None, note_id=None, unconditional=False, mirror=False):
         if operation not in {"push", "pull"}:
             raise ShyNoteError("Transfer must be push or pull.")
         requested = [] if file is None else [file] if isinstance(file, (str, Path)) else list(file)
+        if mirror:
+            if operation != "pull" or requested or all_files or title is not None or note_id is not None or unconditional:
+                raise ShyNoteError("Use pull --mirror without FILE, --all, --id, --title, or --unconditional.")
+            from .mirror import mirror_upstream
+            return mirror_upstream(self, dry_run=dry_run, show_diff=show_diff)
         restore_path = operation == "pull" and note_id and not requested and not all_files
         if bool(requested) == all_files and not restore_path:
             raise ShyNoteError("Choose FILE arguments, --all, or pull --id NOTE_ID to use its saved path.")

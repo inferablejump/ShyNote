@@ -157,13 +157,25 @@ creates.
 
 Tracking records the storage identity, required notes directory, and a mapping
 from relative file paths to remote IDs, revisions, and synchronized hashes.
-Corrupt or mismatched state fails explicitly.
+Corrupt or mismatched state fails explicitly in ordinary transfers.
 
 State is replaced atomically after each successful transfer. A directory lock
 serializes mutating ShyNote transfers within a checkout; other editors do not
 participate in that lock. Local files are checked again before replacement.
 A batch is a sequence of transfers, so earlier successes survive a later failure.
 Dry runs create neither state nor locks.
+
+`pull --mirror` ignores old tracking and rebuilds it from every active remote note.
+It validates unique, safe paths, downloads all bodies, and checks the listing again
+before staging a replacement notes directory. It checks local files and state for
+changes before installation, then swaps directories and writes the new state.
+Installation exceptions trigger rollback; if rollback also fails, recovery files
+are retained at paths reported in the error. A process crash or power failure is
+not covered by this rollback: the directory and state are separate replacements.
+After resolving any stale lock, another mirror can reconstruct both from upstream.
+Remote listings and reads are not a transactional snapshot; detected changes abort,
+but another writer can still change a note after it was read. Mirror represents the
+downloaded active notes, not empty Notion directory pages or archived notes.
 
 For selection rules and conflict recovery, see [Working with notes](working-copy.md).
 For coverage and live evidence, see [Development](development.md).

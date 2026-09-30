@@ -134,7 +134,25 @@ Per-file errors appear in JSON on stdout; command-level errors appear on stderr.
 For a conflict, preserve the local draft and inspect the remote body with
 `shynote read NOTE_ID`. When reconciliation is within scope, make the tracked file
 match the reviewed remote body and pull to establish that baseline. Then apply
-the intended edits and push. There is no automatic merge or force-overwrite flag.
+the intended edits and push. There is no automatic merge.
+
+When the task calls for replacing the local notebook with upstream, use:
+
+```sh
+shynote pull --mirror --dry-run
+shynote pull --mirror
+```
+
+Mirror fetches every active remote note at its saved path and rebuilds tracking,
+even when state is missing or corrupted. It overwrites local edits and removes
+all local-only files, including unpublished notes and non-Markdown files. Use it
+only when discarding local work is within the user's requested scope; otherwise
+preserve drafts and use ordinary pulls. No manual state deletion is needed.
+Mirror requires a dedicated notes directory and rejects symlinks, nested metadata,
+invalid remote paths, and duplicate paths. It downloads and validates everything
+before replacing files. Do not combine it with FILE, `--all`, or `--id`.
+Results include `removed`/`would_remove` for files and
+`removed_directory`/`would_remove_directory` for extra directories.
 
 If a write completed but readback or local tracking failed, inspect the remote
 note before retrying. Do not blindly rerun the whole batch or repeat a create:

@@ -31,6 +31,7 @@ def main(argv=None) -> int:
             transfer.add_argument("--unconditional", action="store_true", help="Allow Notion writes without atomic conflict protection")
         else:
             transfer.add_argument("--id", dest="note_id", help="Remote note ID; omit FILE to restore its saved relative path")
+            transfer.add_argument("--mirror", action="store_true", help="Rebuild notes and tracking from upstream; overwrites edits and removes local-only files")
     archive = commands.add_parser("archive")
     archive.add_argument("id")
     guard = archive.add_mutually_exclusive_group(required=True)
@@ -41,9 +42,12 @@ def main(argv=None) -> int:
         search.add_argument("query")
     args = parser.parse_args(argv)
     if args.command in {"push", "pull"}:
+        mirror = getattr(args, "mirror", False)
+        if mirror and (args.files or args.all_files or args.note_id):
+            parser.error("--mirror cannot be combined with FILE, --all, or --id.")
         restore_path = args.command == "pull" and args.note_id and not args.files and not args.all_files
-        if bool(args.files) == args.all_files and not restore_path:
-            parser.error("Choose FILE arguments, --all, or pull --id NOTE_ID to use its saved path.")
+        if bool(args.files) == args.all_files and not restore_path and not mirror:
+            parser.error("Choose FILE arguments, --all, pull --id NOTE_ID, or pull --mirror.")
         if (args.all_files or len(args.files) > 1) and (
                 getattr(args, "title", None) is not None or getattr(args, "note_id", None) is not None):
             parser.error("--title and --id apply to a single file only.")
@@ -68,7 +72,8 @@ def main(argv=None) -> int:
             result = WorkingCopy(notebook).transfer(
                 args.command, args.files, all_files=args.all_files, dry_run=args.dry_run,
                 show_diff=args.show_diff, title=getattr(args, "title", None),
-                note_id=getattr(args, "note_id", None), unconditional=getattr(args, "unconditional", False))
+                note_id=getattr(args, "note_id", None), unconditional=getattr(args, "unconditional", False),
+                mirror=getattr(args, "mirror", False))
         elif args.command == "search-title":
             result = [asdict(note) for note in notebook.search_title(args.query)]
         else:

@@ -51,6 +51,7 @@ storage settings, added ignore rules, warnings, `read_access: "verified"`, and
 | `pull FILE --id NOTE_ID` | Same, requiring FILE to match the saved remote path |
 | `pull FILE [FILE ...]` | Refresh selected tracked files |
 | `pull --all` | Refresh locally present tracked files |
+| `pull --mirror` | Replace all local notes from upstream and rebuild tracking |
 
 Paths are relative to `notes_dir`. Explicit lists preserve order, with duplicates
 processed once. `push --all` recursively discovers `.md` files (case-insensitive)
@@ -75,6 +76,15 @@ File arguments cannot be combined with `--all`. `--title` and `--id` apply only
 to a single file and cannot rename or retarget an already tracked note.
 `--unconditional` does not bypass detected content conflicts. S3 pushes always
 use revision guards, including when this flag is supplied.
+
+`pull --mirror` overwrites local edits and removes all local-only files within
+`notes_dir`, including unpublished notes. It works without existing tracking and
+replaces corrupted or mismatched state. A dedicated notes directory is required;
+the project root (`notes_dir = "."`) is rejected. Combine it with `--dry-run` for a
+preview; add `--diff` for preview or applied diffs. Do not combine it with FILE, `--all`, or `--id`.
+Mirror downloads and validates the whole notebook before installing files;
+preflight failures are command-level errors on stderr. Its JSON result adds
+`mirror: true`. See [Replace from upstream](working-copy.md#replace-from-upstream).
 
 The result contains `operation`, `dry_run`, and a `results` array. Each attempted
 file has `file` and `status`, plus its known remote `id`, an `error` on failure, or

@@ -10,7 +10,7 @@ broader product direction.
 
 S3 and Notion share a Python store interface. Developing and testing both keeps
 the interface independent of one provider. Each notebook selects exactly one
-backend; mirroring and failover are outside the design. Dependencies are grouped
+backend; replication between backends and failover are outside the design. Dependencies are grouped
 by backend so an installation only needs the SDKs it uses.
 
 ## Local notes are explicit working copies
@@ -22,6 +22,11 @@ is eligible to push. `pull --all` needs those mappings to refresh existing local
 files. It does not download the whole notebook. Deleting a local file has no
 remote effect.
 
+`pull --mirror` explicitly makes upstream authoritative for the entire notes
+directory. It restores all active notes, discards local-only work, and rebuilds
+tracking from remote IDs, paths, revisions, and contents. Local state is disposable:
+a missing or corrupted state file must not require manual mapping repair.
+
 Push and pull name the transfer direction. Push creates a remote note on first
 use and updates it afterward, keeping both operations in the tracking workflow.
 Creation and body updates are internal store operations; neither has a separate
@@ -31,7 +36,7 @@ public command. There is no background synchronization.
 
 `.shynote` records the backend and required `notes_dir`. Init writes a default
 notes directory, but reading a config never invents one. Missing fields and
-tracking identity mismatches are errors. This prevents a configuration change
+tracking identity mismatches are errors in ordinary transfers. This prevents a configuration change
 from silently targeting different files.
 
 Configuration is shared through Git. Local tracking and scratch notes are ignored

@@ -62,6 +62,13 @@ leaves local setup unapplied. Run `shynote info` to read the resulting paths and
 capabilities. Share `.shynote` and ignore rules as appropriate; keep credentials
 and `.shynote-local/` out of Git.
 
+For a fresh checkout of an existing notebook, `pull --mirror --dry-run` previews
+a full restore and `pull --mirror` downloads every active note and rebuilds local
+tracking. This replaces the notes directory, overwriting edits and removing
+local-only files. Use `pull --id NOTE_ID` instead for selective retrieval that
+preserves other scratch work. Do not mirror before publishing local notes that
+must be retained.
+
 ## Bring existing notes into ShyNote
 
 Use the existing notes directory with `init --notes-dir PATH`; init preserves its

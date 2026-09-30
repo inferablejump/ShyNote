@@ -26,6 +26,9 @@ Rate-limit tests mock HTTP 429 responses and time: they verify retry timing and
 limits, refusal to repeat ambiguous writes, and recovery from failed readback.
 Bulk-push tests check that sibling discovery is shared within a batch and that
 the cache is discarded afterward.
+Mirror tests cover both adapters, missing/corrupt tracking, authoritative overwrites
+and removals, fresh checkouts, dry runs, failed downloads, concurrent changes,
+path collisions, filesystem rollback, and retaining backups when rollback fails.
 
 ## Live tests
 
@@ -111,12 +114,14 @@ why the S3 adapter sets the region on both its session and client.
 | [notebook.py](../shynote/notebook.py) | Adapter selection |
 | [model.py](../shynote/model.py) | Shared types, capabilities, protocol, and errors |
 | [working_copy.py](../shynote/working_copy.py) | Tracking, diffs, transfer decisions, and local writes |
+| [mirror.py](../shynote/mirror.py) | Authoritative upstream restore and tracking reconstruction |
 | [stores/s3.py](../shynote/stores/s3.py) | S3 adapter |
 | [stores/notion.py](../shynote/stores/notion.py) | Notion adapter and REST transport |
 | [stores/notion_metadata.py](../shynote/stores/notion_metadata.py) | Required remote path block encoding and validation |
 | [test_init.py](../tests/test_init.py) | Setup behavior and required notes-directory validation |
 | [test_storage.py](../tests/test_storage.py) | Storage contract and provider behavior |
 | [test_working_copy.py](../tests/test_working_copy.py) | Transfers and conflicts on both adapters |
+| [test_mirror.py](../tests/test_mirror.py) | Upstream restore, previews, validation, and rollback |
 | [test_paths.py](../tests/test_paths.py) | Fresh-checkout path recovery and malformed metadata rejection |
 | [test_notion_hierarchy.py](../tests/test_notion_hierarchy.py) | Nested directory creation, traversal, isolation, and strict layout checks |
 | [test_notion_rate_limits.py](../tests/test_notion_rate_limits.py) | Bounded 429 retries and preservation of created IDs after readback failure |

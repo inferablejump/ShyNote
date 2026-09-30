@@ -104,3 +104,8 @@ Pull restores the saved directory layout under `notes_dir` and builds that
 checkout's own tracking state. Do not copy `.shynote-local/`
 between checkouts. `pull --all` refreshes mapped local files; it does not initially
 download the remote notebook.
+
+To restore the entire notebook instead, run `shynote pull --mirror --dry-run`,
+then `shynote pull --mirror`. This rebuilds tracking from upstream, overwrites local
+edits, and removes local-only files. Use it for an upstream-authoritative restore,
+not before publishing notes you want to retain: unpublished files would be removed.

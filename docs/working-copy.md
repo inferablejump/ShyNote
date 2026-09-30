@@ -85,6 +85,33 @@ and the failed file; later files are untouched and omitted. Earlier successful
 transfers remain saved. A missing explicitly requested file is an error, except
 when a first pull is creating it.
 
+## Replace from upstream
+
+To restore the whole notebook, or discard local work and rebuild tracking:
+
+```sh
+shynote pull --mirror --dry-run
+shynote pull --mirror
+```
+
+**Upstream wins:** mirror downloads every active note at its saved path,
+overwrites local edits, removes local-only files and empty directories, and
+rebuilds `.shynote-local/state.json`. Missing, corrupted, or mismatched tracking
+does not need manual repair or deletion. A new checkout can use the same command.
+This includes removing non-Markdown files and notes that have never been pushed.
+An empty upstream produces an empty notes directory.
+
+Mirror requires a dedicated `notes_dir`; it refuses `notes_dir = "."`, symbolic
+links, and nested Git/ShyNote metadata. Files outside that directory are preserved.
+Use `--dry-run` to inspect overwrites and removals without changing anything, or
+add `--diff` for preview or applied diffs. Do not combine `--mirror` with file
+arguments, `--all`, or `--id`. It makes no remote writes.
+
+All remote notes are downloaded and validated before replacing local files.
+Missing/invalid metadata, duplicate remote paths, failed reads, or detected
+concurrent changes abort the mirror. Installation errors trigger rollback; see
+[Local persistence](storage.md#local-persistence) for crash limitations.
+
 ## Preview changes
 
 `--dry-run` returns proposed changes and unified diffs without writing remote
@@ -118,8 +145,9 @@ To resolve a conflict:
 3. Apply your intended edits, preview the push, and push again.
 
 Further concurrent edits may produce another conflict. There is no automatic
-merge or force-overwrite option. Deleting tracking state is not conflict
-resolution: a later push could create a duplicate note.
+merge. To discard local work in favor of the entire upstream notebook, use
+`pull --mirror`. Deleting tracking alone does not resolve conflicts: a later push
+could create a duplicate note.
 
 Notion rate limits pause and retry the failed request automatically, within
 bounded attempt and wait limits. Wait notices appear on stderr. If retries are
@@ -139,6 +167,8 @@ for the failed file's path. Do not assume a failed push means no page was create
 | `created` / `would_create` | Created a remote note / preview of creation |
 | `pushed` / `would_push` | Updated remote content / preview of update |
 | `pulled` / `would_pull` | Fetched remote content / preview of fetch |
+| `removed` / `would_remove` | Mirror removed a local-only file / preview of removal |
+| `removed_directory` / `would_remove_directory` | Mirror removed an extra local directory / preview |
 | `unchanged` | No content transfer needed; tracking may be refreshed |
 | `local_changes` | Pull preserved local edits; push them when ready |
 | `remote_changes` | Push preserved remote edits; pull them first |
@@ -154,7 +184,8 @@ are proposals, not guarantees. Some failures occur before a diff is available.
 `.shynote-local/state.json` stores note IDs, revisions, and synchronized content
 hashes beside `.shynote`. It is private to this checkout and bound to the storage
 location and notes directory. Missing notes-directory identity or a mismatch is
-an error; configuration changes do not migrate state.
+an error in ordinary transfers; configuration changes do not migrate state.
+`pull --mirror` reconstructs this disposable state from the configured upstream.
 
 ShyNote locks mutating transfers with `.shynote-local/lock`. If a process crashes,
 confirm it has stopped before removing the leftover lock directory. Editors do
