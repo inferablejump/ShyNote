@@ -86,6 +86,12 @@ omitted. Earlier successful transfers remain saved. Add `--verbose` for every
 per-file result. A missing explicitly requested file is an error, except when a
 first pull is creating it.
 
+In an interactive terminal, push and pull show a progress bar with the selected
+file count and the file currently being processed. The filename appears before
+the request starts, so slow requests remain identifiable. Captured agent/script
+output stays quiet by default. Use `--no-progress` to hide the bar or `--progress`
+to force it; neither changes JSON output or hides retry notices.
+
 ## Replace from upstream
 
 To restore the whole notebook, or discard local work and rebuild tracking:

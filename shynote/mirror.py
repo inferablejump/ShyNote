@@ -119,7 +119,7 @@ def _install(copy, staged, backup, state, previous_state):
             shutil.rmtree(state_directory)
 
 
-def mirror_upstream(copy, *, dry_run=False, show_diff=False):
+def mirror_upstream(copy, *, dry_run=False, show_diff=False, progress=None):
     config = copy.notebook.config
     validate_notes_dir(copy.repo_root, config.notes_dir)
     if copy.root == copy.repo_root:
@@ -133,14 +133,20 @@ def mirror_upstream(copy, *, dry_run=False, show_diff=False):
         store = copy.notebook.store
         inventory = _inventory(store)
         notes = {}
+        if progress:
+            progress(0, len(inventory), "")
         state = {"version": 1, "identity": copy.identity, "files": {}}
         for name, note_id in sorted(inventory.items()):
+            if progress:
+                progress(len(notes), len(inventory), name)
             note = store.read(note_id)
             if note.id != note_id or note.path != name or note.archived:
                 raise Conflict(f"Upstream note {note_id} changed identity, path, or archive state during mirror; retry.")
             notes[name] = note
             state["files"][name] = {"id": note.id, "revision": note.revision,
                                     "local_hash": _hash(note.body), "remote_hash": _hash(note.body)}
+            if progress:
+                progress(len(notes), len(inventory), name)
         if _inventory(store) != inventory:
             raise Conflict("Upstream note membership changed during mirror; retry. Local notes were not replaced.")
         results = _preview(local_files, local_directories, notes, dry_run, show_diff)

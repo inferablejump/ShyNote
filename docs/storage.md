@@ -17,7 +17,7 @@ or revision tokens.
 
 Opening a notebook performs no network requests. S3 creates its client on the
 first remote operation; Notion reads its token when issuing a request. The base
-package has no third-party dependencies. The S3 extra installs Boto3 with CRT;
+package uses tqdm for terminal progress. The S3 extra installs Boto3 with CRT;
 the Notion adapter uses the standard library.
 
 ## Capabilities

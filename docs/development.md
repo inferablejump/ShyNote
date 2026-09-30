@@ -31,6 +31,8 @@ and removals, fresh checkouts, dry runs, failed downloads, concurrent changes,
 path collisions, filesystem rollback, and retaining backups when rollback fails.
 CLI output tests cover compact bulk counts, visible failures and skipped work,
 verbose results, and diffs that are computed only when requested.
+Progress tests check terminal detection and overrides, filenames before requests,
+selected-file totals, readable retry notices, and cleanup on interruption.
 
 ## Live tests
 
@@ -117,6 +119,7 @@ why the S3 adapter sets the region on both its session and client.
 | [model.py](../shynote/model.py) | Shared types, capabilities, protocol, and errors |
 | [working_copy.py](../shynote/working_copy.py) | Tracking, diffs, transfer decisions, and local writes |
 | [mirror.py](../shynote/mirror.py) | Authoritative upstream restore and tracking reconstruction |
+| [progress.py](../shynote/progress.py) | Terminal progress and stderr notice handling |
 | [stores/s3.py](../shynote/stores/s3.py) | S3 adapter |
 | [stores/notion.py](../shynote/stores/notion.py) | Notion adapter and REST transport |
 | [stores/notion_metadata.py](../shynote/stores/notion_metadata.py) | Required remote path block encoding and validation |
@@ -125,6 +128,7 @@ why the S3 adapter sets the region on both its session and client.
 | [test_working_copy.py](../tests/test_working_copy.py) | Transfers and conflicts on both adapters |
 | [test_mirror.py](../tests/test_mirror.py) | Upstream restore, previews, validation, and rollback |
 | [test_cli_output.py](../tests/test_cli_output.py) | Compact summaries, verbose output, and explicit diffs |
+| [test_progress.py](../tests/test_progress.py) | Terminal progress, live filenames, and interruption cleanup |
 | [test_paths.py](../tests/test_paths.py) | Fresh-checkout path recovery and malformed metadata rejection |
 | [test_notion_hierarchy.py](../tests/test_notion_hierarchy.py) | Nested directory creation, traversal, isolation, and strict layout checks |
 | [test_notion_rate_limits.py](../tests/test_notion_rate_limits.py) | Bounded 429 retries and preservation of created IDs after readback failure |

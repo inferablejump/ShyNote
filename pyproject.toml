@@ -7,7 +7,7 @@ name = "shynote"
 version = "0.1.0"
 description = "A persistent, repo-scoped notebook for coding agents"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = ["tqdm>=4.67,<5"]
 
 [project.optional-dependencies]
 s3 = ["boto3[crt]>=1.41,<2"]

@@ -69,6 +69,7 @@ both go through push; there is no separate `create` command.
 | `--dry-run` | Push, pull | Preview changed paths without writes; no diffs unless requested |
 | `--diff` | Push, pull | Include diffs in transfer results |
 | `--verbose` | Push, pull | Include every per-file result, including unchanged files |
+| `--progress` / `--no-progress` | Push, pull | Force or disable the stderr progress bar; automatic when stderr is a terminal |
 | `--title TITLE` | First push of one file | Set the title; default is the file stem |
 | `--id NOTE_ID` | Pull of one note | Select the remote note; FILE can be omitted |
 | `--unconditional` | Push | Allow Notion updates without an atomic revision guard |
@@ -114,6 +115,19 @@ verification failed; that note is not yet tracked locally. Inspect and recover
 it with read/pull before retrying creation. Notion rate-limit wait notices go to
 stderr while the request retries; exhausted retries produce an ordinary error.
 See [Working with notes](working-copy.md) for examples and status meanings.
+
+In a terminal, a progress bar shows the completed/selected count and the current
+file before its operation starts. The total includes unchanged and skipped files;
+it is not a prediction of how many uploads are necessary. Failed operations count
+as attempted files, and the batch still stops at its first failure. Dry runs use a
+preview label. For `pull --mirror`, the bar counts remote note downloads, not local
+removals or installation steps.
+
+The bar clears when the operation ends; stdout keeps the same JSON result. Retry
+notices print separately on stderr while the bar is active. Captured stderr has
+no bar by default, keeping agent and script logs small. `--progress` forces it,
+and `--no-progress` disables it without suppressing errors or retry notices. The
+two flags are mutually exclusive and independent of `--verbose`.
 
 ## Browse and read
 

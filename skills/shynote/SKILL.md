@@ -134,6 +134,11 @@ entries, not just the exit code:
 Exit code 1 indicates failure; 2 is invalid CLI syntax; 130 is interruption.
 `local_changes` and `remote_changes` can return code 0 without transferring content.
 Per-file errors appear in JSON on stdout; command-level errors appear on stderr.
+Interactive terminals also show a stderr progress bar with the current filename
+and selected-file count. Captured output disables it automatically; agents should
+keep that default or use `--no-progress` when running through a terminal. Use
+`--progress` only when a live bar is useful. These flags do not affect JSON results,
+error reporting, or Notion retry notices.
 
 ## Recover without losing work
 

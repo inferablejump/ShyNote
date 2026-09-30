@@ -7,6 +7,7 @@ import sys
 
 from .model import ShyNoteError
 from .notebook import open_notebook
+from .progress import transfer_progress
 from .working_copy import WorkingCopy
 
 
@@ -48,6 +49,11 @@ def main(argv=None) -> int:
         transfer.add_argument("--dry-run", action="store_true", help="Preview changed paths without writes; add --diff for contents")
         transfer.add_argument("--diff", action="store_true", dest="show_diff", help="Include unified diffs in JSON output")
         transfer.add_argument("--verbose", action="store_true", help="Include every per-file result instead of only bulk counts and actionable details")
+        progress = transfer.add_mutually_exclusive_group()
+        progress.add_argument("--progress", dest="progress", action="store_true", default=None,
+                              help="Show a progress bar on stderr (default: only in a terminal)")
+        progress.add_argument("--no-progress", dest="progress", action="store_false",
+                              help="Disable the progress bar; errors and retry notices remain visible")
         if name == "push":
             transfer.add_argument("--title", help="Title for a new note (default: file stem)")
             transfer.add_argument("--unconditional", action="store_true", help="Allow Notion writes without atomic conflict protection")
@@ -91,11 +97,16 @@ def main(argv=None) -> int:
             store.archive(args.id, revision=args.revision, unconditional=args.unconditional)
             result = {"id": args.id, "operation": args.command, "ok": True}
         elif args.command in {"push", "pull"}:
-            result = WorkingCopy(notebook).transfer(
-                args.command, args.files, all_files=args.all_files, dry_run=args.dry_run,
-                show_diff=args.show_diff, title=getattr(args, "title", None),
-                note_id=getattr(args, "note_id", None), unconditional=getattr(args, "unconditional", False),
-                mirror=getattr(args, "mirror", False))
+            mirror = getattr(args, "mirror", False)
+            description = "Fetching" if mirror else "Pushing" if args.command == "push" else "Pulling"
+            if args.dry_run:
+                description = "Previewing " + ("mirror" if mirror else args.command)
+            with transfer_progress(description, args.progress) as progress:
+                result = WorkingCopy(notebook).transfer(
+                    args.command, args.files, all_files=args.all_files, dry_run=args.dry_run,
+                    show_diff=args.show_diff, title=getattr(args, "title", None),
+                    note_id=getattr(args, "note_id", None), unconditional=getattr(args, "unconditional", False),
+                    mirror=mirror, progress=progress)
         elif args.command == "search-title":
             result = [asdict(note) for note in notebook.search_title(args.query)]
         else:
