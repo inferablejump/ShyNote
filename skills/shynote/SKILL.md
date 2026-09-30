@@ -88,9 +88,10 @@ preview. Notion cannot guard writes atomically, so concurrent edits can be lost
 between checking and writing. The flag does not bypass detected content conflicts.
 S3 pushes always use revision guards. Initial creation needs no unconditional flag.
 
-Use `--dry-run` when a preview helps assess changes. It returns diffs without
+Use `--dry-run` when a preview helps assess changes. It lists changed paths without
 writing notes, local files, or tracking. It still performs remote reads and does
-not reserve a revision. `--diff` includes diffs with a normal transfer.
+not reserve a revision. Add `--diff` only when contents need review, in a preview
+or normal transfer; dry runs do not include diffs automatically.
 
 ## Select files and interpret results
 
@@ -112,9 +113,14 @@ note or link local files by name. Both commands report missing tracked files as
 `skipped_missing`. Do not combine files with `--all`; `--title` and `--id` apply
 only to a single file.
 
-Transfers stop at the first error or conflict. JSON results include prior successes
-and the failed file; later files are omitted. Earlier successes remain saved.
-Read each result's `status`, not just the exit code:
+Transfers stop at the first error or conflict. Bulk JSON output includes
+`processed` and counts by status; earlier successes remain saved. Details in
+`results` retain failed paths, errors, recovery IDs, and skipped/preserved work.
+Later files are untouched and omitted. Dry runs also list proposed changes/removals,
+without unchanged files. Prefer these compact defaults; request `--verbose` when
+every file's result or ID is needed. It does not enable diffs. Single-note commands
+retain their full `results` array. Read status counts and any detailed `status`
+entries, not just the exit code:
 
 | Result | Next action |
 | --- | --- |

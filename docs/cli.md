@@ -66,8 +66,9 @@ both go through push; there is no separate `create` command.
 
 | Option | Applies to | Action |
 | --- | --- | --- |
-| `--dry-run` | Push, pull | Preview changes and diffs without writes |
+| `--dry-run` | Push, pull | Preview changed paths without writes; no diffs unless requested |
 | `--diff` | Push, pull | Include diffs in transfer results |
+| `--verbose` | Push, pull | Include every per-file result, including unchanged files |
 | `--title TITLE` | First push of one file | Set the title; default is the file stem |
 | `--id NOTE_ID` | Pull of one note | Select the remote note; FILE can be omitted |
 | `--unconditional` | Push | Allow Notion updates without an atomic revision guard |
@@ -86,9 +87,27 @@ Mirror downloads and validates the whole notebook before installing files;
 preflight failures are command-level errors on stderr. Its JSON result adds
 `mirror: true`. See [Replace from upstream](working-copy.md#replace-from-upstream).
 
-The result contains `operation`, `dry_run`, and a `results` array. Each attempted
-file has `file` and `status`, plus its known remote `id`, an `error` on failure, or
-an available `diff` when requested. Diffs are JSON strings with escaped newlines.
+Bulk transfers (`--all`, `--mirror`, or multiple FILE arguments) return `operation`,
+`dry_run`, `processed`, and counts for each observed status. Counts include only
+attempted entries, up to and including the first failure. Mirror counts include
+directory removals. An empty batch has `processed: 0` and no status counts.
+
+```json
+{"operation":"pull","dry_run":false,"processed":62,"pulled":18,"unchanged":42,"removed":2,"mirror":true}
+```
+
+Default bulk output omits successful per-file results. A `results` array appears
+when there are errors, conflicts, preserved local/remote changes, or missing files;
+these entries retain their paths, errors, and known remote IDs. Dry runs also list
+each proposed change/removal with `file` and `status`, omitting unchanged files.
+`--diff` adds available diffs and includes entries with nonempty diffs. Diffs are
+JSON strings with escaped newlines; they are never implied by `--dry-run` or
+`--verbose`.
+
+Use `--verbose` for the full `results` array alongside counts. Each attempted
+file has `file`, `status`, and other available fields such as its remote `id` and
+title. Single-note commands always retain their full `results` array without
+bulk counts. `list`, `search-title`, and `read` retain their existing output.
 
 An error may include a newly created `id` when remote creation succeeded but
 verification failed; that note is not yet tracked locally. Inspect and recover

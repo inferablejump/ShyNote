@@ -180,7 +180,7 @@ class WorkingCopy:
                         result["status"] = "skipped_missing"
                     else:
                         self._transfer_one(state, result, path, operation, entry, dry_run,
-                                           show_diff or dry_run, title, note_id, unconditional)
+                                           show_diff, title, note_id, unconditional)
                 except (ShyNoteError, OSError, UnicodeError) as exc:
                     result.update(status="conflict" if isinstance(exc, Conflict) else "error", error=str(exc))
                     if isinstance(exc, CreatedNoteError):

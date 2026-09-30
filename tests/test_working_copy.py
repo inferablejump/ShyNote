@@ -59,7 +59,7 @@ class WorkingCopyTests(unittest.TestCase):
             with self.subTest(backend=backend), self.notebook(backend) as (root, notebook, copy):
                 path = root / "note.md"
                 path.write_text("initial\n")
-                preview = self.one(copy, "push", dry_run=True)
+                preview = self.one(copy, "push", dry_run=True, show_diff=True)
                 self.assertEqual(preview["status"], "would_create")
                 self.assertIn("+initial\n", preview["diff"])
                 self.assertFalse(copy.directory.exists())
@@ -67,14 +67,14 @@ class WorkingCopyTests(unittest.TestCase):
                 note_id = self.one(copy, "push")["id"]
                 state = copy.state_path.read_bytes()
                 path.write_text("changed\n")
-                preview = self.one(copy, "push", dry_run=True, unconditional=True)
+                preview = self.one(copy, "push", dry_run=True, show_diff=True, unconditional=True)
                 self.assertEqual(preview["status"], "would_push")
                 self.assertIn("-initial\n+changed\n", preview["diff"])
                 self.assertEqual(notebook.store.read(note_id).body, "initial\n")
                 self.assertEqual(copy.state_path.read_bytes(), state)
                 path.write_text("initial\n")
                 self.update_remote(notebook, note_id, "remote\n")
-                preview = self.one(copy, "pull", dry_run=True)
+                preview = self.one(copy, "pull", dry_run=True, show_diff=True)
                 self.assertEqual(preview["status"], "would_pull")
                 self.assertIn("-initial\n+remote\n", preview["diff"])
                 self.assertEqual(path.read_text(), "initial\n")
@@ -185,14 +185,14 @@ class WorkingCopyTests(unittest.TestCase):
                 self.assertEqual(copy.transfer("pull", all_files=True, dry_run=True)["results"], [])
                 with patch("shynote.cli.open_notebook", return_value=notebook):
                     with redirect_stdout(StringIO()) as output:
-                        self.assertEqual(main(["push", "--all", "--dry-run"]), 0)
+                        self.assertEqual(main(["push", "--all", "--dry-run", "--diff"]), 0)
                     preview = json.loads(output.getvalue())["results"]
                     self.assertEqual([r["file"] for r in preview], ["a.md", "nested/b.MD"])
                     self.assertTrue(all(r["status"] == "would_create" and r["diff"] for r in preview))
                     self.assertFalse(copy.directory.exists())
                     self.assertEqual(notebook.store.list_notes(), [])
                     with redirect_stdout(StringIO()) as output:
-                        self.assertEqual(main(["push", "--all"]), 0)
+                        self.assertEqual(main(["push", "--all", "--verbose"]), 0)
                     created = json.loads(output.getvalue())["results"]
                 self.assertEqual([r["status"] for r in created], ["created", "created"])
                 self.assertEqual({note.title for note in notebook.store.list_notes()}, {"a", "b"})
@@ -411,7 +411,7 @@ class WorkingCopyTests(unittest.TestCase):
             (root / "note.md").write_text("base\n")
             with patch("shynote.cli.open_notebook", return_value=notebook):
                 with redirect_stdout(StringIO()) as output:
-                    self.assertEqual(main(["push", "note.md", "--dry-run"]), 0)
+                    self.assertEqual(main(["push", "note.md", "--dry-run", "--diff"]), 0)
                 self.assertIn("+base\n", json.loads(output.getvalue())["results"][0]["diff"])
                 note_id = self.one(copy, "push")["id"]
                 (root / "note.md").write_text("local\n")
@@ -427,14 +427,14 @@ class WorkingCopyTests(unittest.TestCase):
                     (root / name).write_text(name + "\n")
                 with patch("shynote.cli.open_notebook", return_value=notebook):
                     with redirect_stdout(StringIO()) as output:
-                        self.assertEqual(main(["push", "hello2.md", "hello1.md", "./hello2.md", "--dry-run"]), 0)
+                        self.assertEqual(main(["push", "hello2.md", "hello1.md", "./hello2.md", "--dry-run", "--diff"]), 0)
                     results = json.loads(output.getvalue())["results"]
                     self.assertEqual([r["file"] for r in results], ["hello2.md", "hello1.md"])
                     self.assertTrue(all(r["status"] == "would_create" and r["diff"] for r in results))
                     self.assertFalse(copy.directory.exists())
                     self.assertEqual(notebook.store.list_notes(), [])
                     with redirect_stdout(StringIO()) as output:
-                        self.assertEqual(main(["push", "hello2.md", "hello1.md", "hello2.md"]), 0)
+                        self.assertEqual(main(["push", "hello2.md", "hello1.md", "hello2.md", "--verbose"]), 0)
                     results = json.loads(output.getvalue())["results"]
                     self.assertEqual([r["status"] for r in results], ["created", "created"])
                     self.assertEqual({n.title for n in notebook.store.list_notes()}, {"hello1", "hello2"})
@@ -453,7 +453,7 @@ class WorkingCopyTests(unittest.TestCase):
                 state = copy.state_path.read_bytes()
                 with patch("shynote.cli.open_notebook", return_value=notebook):
                     with redirect_stdout(StringIO()) as output:
-                        self.assertEqual(main(["pull", *selection, "--dry-run"]), 1)
+                        self.assertEqual(main(["pull", *selection, "--dry-run", "--diff"]), 1)
                     results = json.loads(output.getvalue())["results"]
                     self.assertEqual([r["status"] for r in results], ["conflict"])
                     self.assertEqual(results[0]["file"], "conflict.md")

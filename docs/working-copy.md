@@ -80,10 +80,11 @@ remote notes or link new local files by name. Missing tracked files receive
 `skipped_missing` on both commands. Local deletion never deletes or archives the
 remote note.
 
-Both forms stop at the first error or conflict. Results include earlier successes
-and the failed file; later files are untouched and omitted. Earlier successful
-transfers remain saved. A missing explicitly requested file is an error, except
-when a first pull is creating it.
+Both forms stop at the first error or conflict. Bulk output counts earlier
+successes and includes details for the failed file; later files are untouched and
+omitted. Earlier successful transfers remain saved. Add `--verbose` for every
+per-file result. A missing explicitly requested file is an error, except when a
+first pull is creating it.
 
 ## Replace from upstream
 
@@ -114,9 +115,19 @@ concurrent changes abort the mirror. Installation errors trigger rollback; see
 
 ## Preview changes
 
-`--dry-run` returns proposed changes and unified diffs without writing remote
+`--dry-run` lists proposed changed paths without writing remote
 notes, local files, tracking, or locks. It can still require credentials and
-remote reads. `--diff` includes diffs during a normal transfer.
+remote reads. Add `--diff` to see unified diffs in a preview or normal transfer:
+
+```sh
+shynote push --all --dry-run --diff
+```
+
+Bulk commands normally return counts, plus details for failures and skipped work.
+Dry runs additionally list changes/removals, without unchanged files. `--verbose`
+includes all per-file results and IDs; it does not enable diffs. Single-note
+commands retain their per-file result. See [CLI output](cli.md#push-and-pull)
+for the JSON fields.
 
 Read the status with the diff: a conflict diff shows the competing versions, not
 an applied change. The real transfer checks again, so a preview does not reserve

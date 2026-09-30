@@ -1,4 +1,5 @@
 import argparse
+from collections import Counter
 from dataclasses import asdict
 import json
 from pathlib import Path
@@ -7,6 +8,26 @@ import sys
 from .model import ShyNoteError
 from .notebook import open_notebook
 from .working_copy import WorkingCopy
+
+
+def _transfer_output(result, *, bulk, verbose, show_diff):
+    """Summarize bulk success while retaining previews and actionable results."""
+    if not bulk:
+        return result
+    items = result["results"]
+    output = {key: value for key, value in result.items() if key != "results"}
+    output.update(processed=len(items))
+    output.update(Counter(item["status"] for item in items))
+    details = []
+    for item in items:
+        status = item["status"]
+        if verbose or status in {"error", "conflict", "local_changes", "remote_changes", "skipped_missing"}:
+            details.append(item)
+        elif (result["dry_run"] and status.startswith("would_")) or (show_diff and item.get("diff")):
+            details.append({key: item[key] for key in ("file", "status", "diff") if key in item})
+    if details or verbose:
+        output["results"] = details
+    return output
 
 
 def main(argv=None) -> int:
@@ -24,8 +45,9 @@ def main(argv=None) -> int:
         transfer = commands.add_parser(name, help=f"{name.capitalize()} selected files or all {scope}")
         transfer.add_argument("files", nargs="*", type=Path, metavar="FILE", help="File paths relative to the configured notes directory")
         transfer.add_argument("--all", action="store_true", dest="all_files", help=f"Select all {scope} under the notes directory")
-        transfer.add_argument("--dry-run", action="store_true", help="Preview diffs without changing files or remote notes")
+        transfer.add_argument("--dry-run", action="store_true", help="Preview changed paths without writes; add --diff for contents")
         transfer.add_argument("--diff", action="store_true", dest="show_diff", help="Include unified diffs in JSON output")
+        transfer.add_argument("--verbose", action="store_true", help="Include every per-file result instead of only bulk counts and actionable details")
         if name == "push":
             transfer.add_argument("--title", help="Title for a new note (default: file stem)")
             transfer.add_argument("--unconditional", action="store_true", help="Allow Notion writes without atomic conflict protection")
@@ -78,10 +100,14 @@ def main(argv=None) -> int:
             result = [asdict(note) for note in notebook.search_title(args.query)]
         else:
             result = [asdict(note) for note in notebook.search_content(args.query)]
+        failed = False
+        if args.command in {"push", "pull"}:
+            failed = any(item["status"] in {"error", "conflict"} for item in result["results"])
+            result = _transfer_output(
+                result, bulk=args.all_files or getattr(args, "mirror", False) or len(args.files) > 1,
+                verbose=args.verbose, show_diff=args.show_diff)
         print(json.dumps(result, ensure_ascii=False))
-        if args.command in {"push", "pull"} and any(item["status"] in {"error", "conflict"} for item in result["results"]):
-            return 1
-        return 0
+        return 1 if failed else 0
     except (ShyNoteError, OSError, UnicodeError) as exc:
         print(f"shynote: {exc}", file=sys.stderr)
         return 1

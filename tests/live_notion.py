@@ -65,7 +65,7 @@ def main():
             local.parent.mkdir(parents=True)
             local.write_text("# Live finding\n\nOriginal finding: café 日本語.\n\n```python\nprint('hello')\n```\n", encoding="utf-8")
             title = f"ShyNote live {run_id} finding"
-            preview = cli(first, "push", note_path, "--title", title, "--dry-run")["results"][0]
+            preview = cli(first, "push", note_path, "--title", title, "--dry-run", "--diff")["results"][0]
             check("new push dry run", preview["status"] == "would_create" and "Original finding" in preview["diff"]
                   and not (first / ".shynote-local").exists())
             check("new dry run creates no remote note", {item["id"] for item in cli(first, "list")} == initial_ids)
@@ -105,7 +105,7 @@ def main():
             state = (first / ".shynote-local/state.json").read_bytes()
             refused = cli(first, "push", note_path, expect=1)["results"][0]
             check("push requires unconditional opt-in", refused["status"] == "error" and "--unconditional" in refused["error"])
-            preview = cli(first, "push", note_path, "--unconditional", "--dry-run")["results"][0]
+            preview = cli(first, "push", note_path, "--unconditional", "--dry-run", "--diff")["results"][0]
             check("push dry run shows diff", preview["status"] == "would_push" and "Updated finding" in preview["diff"])
             check("push dry run preserves remote and state", cli(first, "read", note_id)["body"] == fetched["body"]
                   and (first / ".shynote-local/state.json").read_bytes() == state)
@@ -120,7 +120,7 @@ def main():
             check("normalized push remains synchronized", cli(first, "push", note_path, "--unconditional")["results"][0]["status"] == "unchanged")
             second_file = second / note_path
             second_state = (second / ".shynote-local/state.json").read_bytes()
-            preview = cli(second, "pull", "--all", "--dry-run")["results"][0]
+            preview = cli(second, "pull", "--all", "--dry-run", "--diff")["results"][0]
             check("pull dry run preserves local file and state", preview["status"] == "would_pull" and preview["diff"]
                   and second_file.read_text(encoding="utf-8") == fetched["body"]
                   and (second / ".shynote-local/state.json").read_bytes() == second_state)
@@ -137,7 +137,7 @@ def main():
                   second_file.read_text(encoding="utf-8") == updated_body)
             (second / "scratch.md").write_text("A new note discovered by push all.")
             second_file.write_text(updated_body.replace("Updated finding", "Bulk updated finding"), encoding="utf-8")
-            bulk = cli(second, "push", "--all", "--unconditional")["results"]
+            bulk = cli(second, "push", "--all", "--unconditional", "--verbose")["results"]
             for result in bulk:
                 if result["status"] == "created":
                     report["created_notes"].append({"id": result["id"], "title": result["title"]})

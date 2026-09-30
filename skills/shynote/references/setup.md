@@ -73,7 +73,8 @@ must be retained.
 
 Use the existing notes directory with `init --notes-dir PATH`; init preserves its
 files. Preview with `push --all --dry-run`, then publish with `push --all` and
-inspect every result. The first push creates remote notes and records mappings;
+inspect status counts and any reported failures. Add `--verbose` when per-file IDs
+are needed. The first push creates remote notes and records mappings;
 files already stored remotely should be linked with `pull --id NOTE_ID` at their
 saved relative paths instead of uploaded as duplicates. This requires identical
 local content or an absent file. Notes without remote path metadata are errors;

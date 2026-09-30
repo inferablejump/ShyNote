@@ -41,7 +41,8 @@ shynote push --all
 shynote list
 ```
 
-Check each result before proceeding. A batch stops at its first failure; earlier
+Check the status counts and any reported failures before proceeding. Use
+`--verbose` when you need each file's result and ID. A batch stops at its first failure; earlier
 successes remain saved. For updates to already mapped Notion notes, add
 `--unconditional` to push and its preview. New notes do not require it.
 

@@ -66,7 +66,7 @@ def _preview(local_files, local_directories, notes, dry_run, show_diff):
             result = {"file": name, "id": notes[name].id, "status": status}
         else:
             result = {"file": name, "status": "would_remove" if dry_run else "removed"}
-        if dry_run or show_diff:
+        if show_diff:
             try:
                 result["diff"] = _diff(before.decode("utf-8"), after.decode("utf-8"),
                                        name if name in local_files else "/dev/null",

@@ -48,12 +48,12 @@ class RemotePathTests(unittest.TestCase):
                     file = source.root / name
                     file.parent.mkdir(parents=True)
                     file.write_text(body)
-                created = self.cli(original, "push", "--all")["results"]
+                created = self.cli(original, "push", "--all", "--verbose")["results"]
                 listing = self.cli(fresh, "list")
                 self.assertEqual({n["path"] for n in listing}, set(paths))
                 self.assertEqual({n["title"] for n in listing}, {"auth"})
                 self.assertFalse(target.directory.exists())
-                self.assertEqual(self.cli(fresh, "pull", "--all")["results"], [])
+                self.assertEqual(self.cli(fresh, "pull", "--all")["processed"], 0)
                 for note in created:
                     preview = self.cli(fresh, "pull", "--id", note["id"], "--dry-run")["results"][0]
                     self.assertEqual(preview["file"], note["file"])
